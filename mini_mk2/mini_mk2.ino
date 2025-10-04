@@ -1,4 +1,8 @@
-// 2D array LED statusjes 9x9
+#include "stm32f103xb.h"
+#include "timer.h"
+#include "stm32f1xx.h"
+
+#include "HardwareTimer.h"
 
 const int NUMLEDS = 81;
 
@@ -16,10 +20,13 @@ int fragment[27][2] = {{0,0}};
 
 int time_multiplier = 10;
 
-int next_fragment_timeout = micros() + 4096 * time_multiplier;
+int next_frame_timeout;
 
 int x = 0;
 int y = 0;
+
+int mux_idx = 1;
+int frame = 0; //4 max, when this reaches 4 it gets reset to 0
 
 #define DS_LED PB15
 #define CP_LED PB13
@@ -30,7 +37,16 @@ int y = 0;
 #define MUX2 PB1
 #define MUX3 PB2
 
+HardwareTimer *MyTim = new HardwareTimer(TIM3);  // TIM3 is MCU hardware peripheral instance, its definition is provided in CMSIS
+
 void setup() {
+  //setup_timer();
+
+  MyTim->setMode(1, TIMER_OUTPUT_DISABLED);
+  MyTim->setOverflow(750, HERTZ_FORMAT); //750
+  MyTim->attachInterrupt(timer_callback);
+  MyTim->resume();
+
   pinMode(DS_LED, OUTPUT);
   pinMode(CP_LED, OUTPUT);
   pinMode(NPL_SW, OUTPUT);
@@ -40,21 +56,39 @@ void setup() {
   pinMode(MUX2, OUTPUT);
   pinMode(MUX3, OUTPUT);
 
-  led_status[2][3][0] = 64;
-  led_status[2][3][1] = 64;
-  led_status[5][3][0] = 64;
-  led_status[2][2][0] = 64;
-  led_status[5][2][0] = 64;
-  led_status[1][5][0] = 64;
-  led_status[6][5][0] = 64;
-  led_status[2][6][0] = 64;
-  led_status[3][6][0] = 64;
-  led_status[4][6][0] = 64;
-  led_status[5][6][0] = 64;
+  led_status[2][3][0] = 4;
+  led_status[2][3][1] = 4;
+  led_status[5][3][0] = 4;
+  led_status[2][2][0] = 4;
+  led_status[5][2][0] = 4;
+  led_status[1][5][0] = 4;
+  led_status[6][5][0] = 4;
+  led_status[2][6][0] = 4;
+  led_status[3][6][0] = 4;
+  led_status[4][6][0] = 4;
+  led_status[5][6][0] = 4;
 
+  //writeOrange();
 
   delay(100);
 }
+
+int brightness_subtract = 0;
+
+void timer_callback() {
+  frame++;
+
+  if (frame == 4) {
+    mux_idx++;
+  }
+  mux_idx = mux_idx % 3;
+  frame = frame % 4;
+  triggerMux(0);
+  displayFragment(mux_idx, frame);
+  triggerMux(mux_idx + 1);
+}
+
+int temp_time = 0;
 
 void loop() {
   //int tempdelay = sin(((millis() / 1000.0) + 1.1) * 10.0);
@@ -75,29 +109,50 @@ void loop() {
 
   // led_status[x][y][0] = 64;
   // led_status[x][y][1] = 0;
+  // if (button_status[1][1] == 1) {
+  //   MyTim->setOverflow(5, HERTZ_FORMAT);
+  // }
+  // else {
+  //   MyTim->setOverflow(500, HERTZ_FORMAT);
+  // }
 
+  temp_time++;
+  //brightness_subtract = (sin(temp_time / 10) * 0.5 + 0.5) * 16.0;
+
+  //MyTim->setOverflow(100 * ((sin(temp_time / 30) * 0.5) + 0.55), HERTZ_FORMAT);
   //readButtons(1);
 
-  // triggerMux(1);
-  // writeOrange();
-  // delay(4);
-  // triggerMux(2);
-  // writeRed();
-  // delay(4);
-  // triggerMux(3);
-  // writeGreen();
-  // delay(4);
+  // setState_NPL_SW(HIGH); //load parallel data into registers
+  // delay(1);
+  // setState_NPL_SW(LOW);  //enable serial shift mode
+  // delay(1);
 
-  next_fragment_timeout = micros() + 4096 * time_multiplier;
-  displayFragment(0);
-  next_fragment_timeout = micros() + 4096 * time_multiplier;
-  displayFragment(1);
-  next_fragment_timeout = micros() + 4096 * time_multiplier;
-  displayFragment(2);
+  // delay(500);
+  // triggerMux(2);
+  // writeOrange();
+  // delay(500);
+  // triggerMux(3);
+  // writeOrange();
+  // delay(500);
+
+  // if (get_interrupt_call()) {
+  //   temp_mux_idx++;
+
+  //   set_interrupt_call(false);
+  // }
+
+  //TIM3->CNT = 1;
+
+  //writeRed();
+  //triggerMux((temp_mux_idx % 3) + 1);
+  delay(10);
 }
 
-void displayFragment(int mux_idx) {
-  triggerMux(mux_idx + 1);
+void enable_global_interrupts() {
+
+}
+
+void displayFragment(int mux_idx, int frame) {
   
   for (int x = 0; x < 3; x++) { //generate array of led color intensities based on mux index: {{64,0}, {32,0}, {50,0}, {0,64}, {RED, GREEN}, etc..} where 64 is max brightness and 0 is disabled
     for (int y = 0; y < 9; y++) {
@@ -105,43 +160,34 @@ void displayFragment(int mux_idx) {
     }
   }
 
-  int next_frame_timeout = micros() + 16 * time_multiplier;
+  int serial_data_out[56] = {0};
 
-  for (int frame = 0; frame < 64; frame++) {
-
-    int serial_data_out[56] = {0};
-
-    for (int idx = 0; idx < 27; idx++) {
-      if (fragment[idx][0] > frame) {
-        serial_data_out[led_register_map_red[idx]] = 1;
-      }
-
-      if (fragment[idx][1] > frame) {
-        serial_data_out[led_register_map_green[idx]] = 1;
-      }
-
+  for (int idx = 0; idx < 27; idx++) {
+    if (fragment[idx][0] - brightness_subtract > frame) {
+      serial_data_out[led_register_map_red[idx]] = 1;
     }
-    writeSerialReverse(serial_data_out, 56);
+    if (fragment[idx][1] - brightness_subtract > frame) {
+      serial_data_out[led_register_map_green[idx]] = 1;
+    }
 
-    while (micros() <= next_frame_timeout) {;} //timeout till next frame
-
-    next_frame_timeout += 64 * time_multiplier;
   }
+  writeSerialReverse(serial_data_out, 56);
 
-  while (micros() <= next_fragment_timeout) {;} //timeout till next fragment
 }
 
-// int readButtons(int mux_idx) {
-//   setState_NPL_SW(HIGH); //load parallel data into registers
-//   setState_NPL_SW(LOW);  //enable serial shift mode
+static inline int readButtons(int mux_idx) {
+  setState_NPL_SW(HIGH); //load parallel data into registers
+  delay(1);
+  setState_NPL_SW(LOW);  //enable serial shift mode
+  delay(1);
 
-//   for (int idx = 0; idx < 32; idx++) {
-//     HC165_clockCycle();
-//     if (button_index_map[mux_idx][idx] != -1) {
-//       button_status[(idx * 3) + mux_idx - 1] = readState_Q_SW();
-//     }
-//   }
-// }
+  // for (int idx = 0; idx < 32; idx++) {
+  //   HC165_clockCycle();
+  //   if (button_index_map[mux_idx][idx] != -1) {
+  //     button_status[(idx * 3) + mux_idx - 1][0] = readState_Q_SW();
+  //   }
+  // }
+}
 
 void writeRed() {
   for (int i = 0; i < 7; i++) {
