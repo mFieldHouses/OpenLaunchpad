@@ -2,7 +2,6 @@
 #include "timer.h"
 #include "stm32f1xx.h"
 
-
 static volatile bool interrupt_call = false;
 
 bool get_interrupt_call() {

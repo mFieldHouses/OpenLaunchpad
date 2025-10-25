@@ -5,16 +5,14 @@
 #include "logo.h"
 
 
-// CONFIGURATION FOR USER ========================================================
+// CONFIGURATION FOR USER - YOU CAN CHANGE THESE VALUES TO WHATEVER YOU WANT ====
 
-const int logo_timeout = 1000; //The amount time the logo will show for upon startup of the launchpad, in milliseconds.
-const char[] device_name = "OpenLaunchpad Mini MK2"; //The name for the device that will show up when connected to a computer via USB.
+const int logo_timeout = 1000; //The amount time the logo will show for upon startup of the launchpad, in milliseconds. The logo shown is defined in "logo.h".
+const bool show_text = false; //Whether the launchpad should show the text defined by startup_text instead of the logo defined in "logo.h".
+char startup_text[] = "OpenLaunchpad"; //The text that will show when the device is booting up and show_text is true.
+char device_name[] = "OpenLaunchpad Mini MK2"; //The name for the device that will show up when connected to a computer via USB.
 
 // END CONFIGURATION FOR USER ====================================================
-
-// DO NOT CHANGE ANYTHING BEYOND THIS POINT IF YOU DON'T KNOW WHAT YOU'RE DOING
-
-
 
 
 
@@ -64,7 +62,7 @@ void setup() {
   //setup_timer();
 
   MyTim->setMode(1, TIMER_OUTPUT_DISABLED);
-  MyTim->setOverflow(750, HERTZ_FORMAT); //750
+  MyTim->setOverflow(1200, HERTZ_FORMAT); //1200
   MyTim->attachInterrupt(timer_callback);
   MyTim->resume();
 
@@ -90,11 +88,23 @@ void setup() {
   // led_status[4][6][0] = 4;
   // led_status[5][6][0] = 4;
 
+  // led_status[3][3][0] = 4;
+  // led_status[3][4][0] = 3;
+  // led_status[3][5][0] = 2;
+  // led_status[3][6][0] = 1;
+  // led_status[4][3][1] = 4;
+  // led_status[4][4][1] = 3;
+  // led_status[4][5][1] = 2;
+  // led_status[4][6][1] = 1;
+
+
   // //writeOrange();
 
-  // timer_callback();
-  // timer_callback();
-  // timer_callback();
+  timer_callback();
+  timer_callback();
+  timer_callback();
+
+  shockWaveAtPosition(8, 8, 1, 1, 14, 5, 0.75, 0.73);
 
   writeBitmap(LOGO_BITMAP);
 
@@ -110,7 +120,7 @@ void timer_callback() {
   mux_idx++;
   //}
   mux_idx = mux_idx % 3;
-  frame = frame % 4;
+  frame = frame % 13;
 
   triggerMux(0);
   displayFragment(mux_idx, frame);
@@ -122,13 +132,24 @@ void timer_callback() {
 
 int temp_time = 0;
 
+void button_down_callback(int posx, int posy) {
+
+}
+
+void button_up_callback(int posx, int posy) {
+
+}
+
 void loop() {
   
-  // if (button_status[6][1] == 0) {
+  // if (button_status[0][8] == 1) {
   //   MyTim->setOverflow(750, HERTZ_FORMAT);
   // }
+  // else if (button_status[1][8] == 1) {
+  //   MyTim->setOverflow(1200, HERTZ_FORMAT);
+  // }
   // else {
-  //   MyTim->setOverflow(20, HERTZ_FORMAT);
+  //   MyTim->setOverflow(1500, HERTZ_FORMAT);
   // }
 
   //temp_time++;
@@ -183,11 +204,11 @@ void displayFragment(int mux_idx, int frame) {
   int serial_data_out[56] = {0};
 
   for (int idx = 0; idx < 27; idx++) {
-    if (fragment[idx][0] - brightness_subtract > frame) {
+    if (pow(fragment[idx][0], 2) > frame) {
       serial_data_out[led_register_map_red[idx]] = 1;
       //serial_data_out[led_register_map_green[idx]] = 1;
     }
-    if (fragment[idx][1] - brightness_subtract > frame) {
+    if (pow(fragment[idx][1], 2) > frame) {
       serial_data_out[led_register_map_green[idx]] = 1;
     }
 
@@ -203,6 +224,35 @@ void readButtons(int mux_idx) {
   for (int temp = 0; temp < 32; temp++) {
     HC165_clockCycle();
     button_status[button_index_map[mux_idx][temp][0]][button_index_map[mux_idx][temp][1]] = readState_Q_SW();
+  }
+}
+
+void shockWaveAtPosition(unsigned int origin_x, unsigned int origin_y, int red, int green, int max_radius, int frame_time, float thickness, float damping) {
+  float _progress = 0.0;
+  int _current_radius = 0;
+  int _frame_delay = frame_time;
+
+  while (_current_radius <= max_radius) {
+    for (int x = 0; x < 9; x++) {
+      for (int y = 0; y < 9; y++) {
+        double _distance_to_origin = sqrt(pow(origin_x - x, 2) + pow(origin_y - y, 2));
+
+        if ((_distance_to_origin >= _current_radius && _distance_to_origin <= _current_radius + thickness) || (_distance_to_origin <= _current_radius && _distance_to_origin >= _current_radius - thickness)) {
+          int _color_at_point[2] = {floor(float(red * 4) * (1.0 - _progress)), floor(float(green * 4) * (1.0 - _progress))};
+          
+          memcpy(led_status[x][y], _color_at_point, 2 * sizeof(int));
+        }
+        else {
+          led_status[x][y][0] = 0;
+          led_status[x][y][1] = 0;
+        }
+      }
+    }
+
+    _current_radius++;
+    delay(_frame_delay);
+    _frame_delay /= damping;
+    _progress = float(_current_radius) / float(max_radius);
   }
 }
 
@@ -312,3 +362,5 @@ void HC165_clockCycle() {
   digitalWrite(CP_SW, HIGH);
   digitalWrite(CP_SW, LOW);
 }
+
+// void drawCharacterAtPosition() {}
