@@ -1,16 +1,8 @@
 #include "stm32f103xb.h"
 #include "timer.h"
 #include "stm32f1xx.h"
-
 #include "HardwareTimer.h"
-
 #include "logo.h"
-
-
-
-
-
-
 
 const int NUMLEDS = 81;
 
@@ -68,24 +60,26 @@ void setup() {
   pinMode(MUX2, OUTPUT);
   pinMode(MUX3, OUTPUT);
 
-  led_status[2][3][1] = 4;
-  led_status[2][3][0] = 4;
-  led_status[2][3][0] = 4;
-  led_status[5][3][0] = 4;
-  led_status[2][2][0] = 4;
-  led_status[5][2][0] = 4;
-  led_status[1][5][0] = 4;
-  led_status[6][5][0] = 4;
-  led_status[2][6][0] = 4;
-  led_status[3][6][0] = 4;
-  led_status[4][6][0] = 4;
-  led_status[5][6][0] = 4;
+  // led_status[2][3][1] = 4;
+  // led_status[2][3][0] = 4;
+  // led_status[2][3][0] = 4;
+  // led_status[5][3][0] = 4;
+  // led_status[2][2][0] = 4;
+  // led_status[5][2][0] = 4;
+  // led_status[1][5][0] = 4;
+  // led_status[6][5][0] = 4;
+  // led_status[2][6][0] = 4;
+  // led_status[3][6][0] = 4;
+  // led_status[4][6][0] = 4;
+  // led_status[5][6][0] = 4;
 
-  //writeOrange();
+  // //writeOrange();
 
-  timer_callback();
-  timer_callback();
-  timer_callback();
+  // timer_callback();
+  // timer_callback();
+  // timer_callback();
+
+  writeBitmap(LOGO_BITMAP);
 
   delay(2000);
 }
@@ -164,7 +158,7 @@ void displayFragment(int mux_idx, int frame) {
   
   for (int x = 0; x < 3; x++) { //generate array of led color intensities based on mux index: {{64,0}, {32,0}, {50,0}, {0,64}, {RED, GREEN}, etc..} where 64 is max brightness and 0 is disabled
     for (int y = 0; y < 9; y++) {
-      memcpy(fragment[led_index_map[(x * 3) + mux_idx][y]], led_status[(x * 3) + mux_idx][y], sizeof(int));
+      memcpy(fragment[led_index_map[(x * 3) + mux_idx][y]], led_status[(x * 3) + mux_idx][y], 2 * sizeof(int));
     }
   }
 
@@ -193,6 +187,18 @@ void readButtons(int mux_idx) {
     HC165_clockCycle();
     button_status[button_index_map[mux_idx][temp][0]][button_index_map[mux_idx][temp][1]] = readState_Q_SW();
   }
+}
+
+void writeBitmap(int bitmap_data[9][9][2]) {
+  for (int y = 0; y < 9; y++) {
+    for (int x = 0; x < 9; x++) {
+      memcpy(led_status[x][y], bitmap_data[y][x], 2 * sizeof(int));
+    }
+  }
+
+  timer_callback();
+  timer_callback();
+  timer_callback();
 }
 
 void writeRed() {
