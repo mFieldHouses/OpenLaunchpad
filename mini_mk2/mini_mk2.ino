@@ -4,6 +4,14 @@
 
 #include "HardwareTimer.h"
 
+#include "logo.h"
+
+
+
+
+
+
+
 const int NUMLEDS = 81;
 
 int led_status[9][9][2] = {{0,0}};
@@ -11,7 +19,11 @@ bool button_status[9][9] = {{0}};
 
 //int led_index_map[9][9] = {{0, 13, 14, 15, 16, 17, 18, 19, 20}, {0, 13, 14, 15, 16, 17, 18, 19, 20}, {0, 13, 14, 15, 16, 17, 18, 19, 20}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {2, 4, 5, 6, 8, 25, 26, 27, 28}, {2, 4, 5, 6, 8, 25, 26, 27, 28}, {2, 4, 5, 6, 8, 25, 26, 27, 28}};
 int led_index_map[9][9] = {{0, 11, 12, 13, 14, 15, 16, 17, 18}, {0, 11, 12, 13, 14, 15, 16, 17, 18}, {0, 11, 12, 13, 14, 15, 16, 17, 18}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {2, 3, 4, 5, 6, 23, 24, 25, 26}, {2, 3, 4, 5, 6, 23, 24, 25, 26}, {2, 3, 4, 5, 6, 23, 24, 25, 26}};
-int button_index_map[3][32] = {{0,3,6,-1,-1,-1,-1,-1,9,18,27,36,45,54,63,72,12,21,30,39,48,57,66,75,15,24,33,42,51,60,69,78}, {1,4,7,-1,-1,-1,-1,-1,10,19,28,37,46,55,64,73,13,22,31,40,49,58,67,76,16,25,34,43,52,61,70,79}, {2,5,8,-1,-1,-1,-1,-1,11,20,29,38,47,56,65,74,14,23,32,41,50,59,68,77,17,26,35,44,53,62,71,80}};
+int button_index_map[3][32][2] = {
+  {{6,7},{6,6},{6,5},{6,4},{6,3},{6,2},{6,1},{3,8},{3,7},{3,6},{3,5},{3,4},{3,3},{3,2},{3,1},{0,8},{0,7},{0,6},{0,5},{0,4},{0,3},{0,2},{0,1},{0,0},{2,2},{2,2},{2,2},{1,1},{1,1},{1,1},{1,1},{1,1}},
+  {{7,7},{7,6},{7,5},{7,4},{7,3},{7,2},{7,1},{4,8},{4,7},{4,6},{4,5},{4,4},{4,3},{4,2},{4,1},{1,8},{1,7},{1,6},{1,5},{1,4},{1,3},{1,2},{1,1},{1,0},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2}},
+  {{8,7},{8,6},{8,5},{8,4},{8,3},{8,2},{8,1},{5,8},{5,7},{5,6},{5,5},{5,4},{5,3},{5,2},{5,1},{2,8},{2,7},{2,6},{2,5},{2,4},{2,3},{2,2},{2,1},{2,0},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2}}
+  };
 
 int led_register_map_green[27] = {0,1,2, 8,9,10,11, 16,17,18,19, 24,25,26,27, 32,33,34,35, 40,41,42,43, 48,49,50,51};
 int led_register_map_red[27] = {3,4,5, 12,13,14,15, 20,21,22,23, 28,29,30,31, 36,37,38,39, 44,45,46,47, 52,53,54,55};
@@ -56,8 +68,9 @@ void setup() {
   pinMode(MUX2, OUTPUT);
   pinMode(MUX3, OUTPUT);
 
-  led_status[2][3][0] = 4;
   led_status[2][3][1] = 4;
+  led_status[2][3][0] = 4;
+  led_status[2][3][0] = 4;
   led_status[5][3][0] = 4;
   led_status[2][2][0] = 4;
   led_status[5][2][0] = 4;
@@ -70,7 +83,11 @@ void setup() {
 
   //writeOrange();
 
-  delay(100);
+  timer_callback();
+  timer_callback();
+  timer_callback();
+
+  delay(2000);
 }
 
 int brightness_subtract = 0;
@@ -78,62 +95,53 @@ int brightness_subtract = 0;
 void timer_callback() {
   frame++;
 
-  if (frame == 4) {
-    mux_idx++;
-  }
+  //if (frame == 4) {
+  mux_idx++;
+  //}
   mux_idx = mux_idx % 3;
   frame = frame % 4;
+
   triggerMux(0);
   displayFragment(mux_idx, frame);
   triggerMux(mux_idx + 1);
+
+  readButtons(mux_idx);
+
 }
 
 int temp_time = 0;
 
 void loop() {
-  //int tempdelay = sin(((millis() / 1000.0) + 1.1) * 10.0);
-
-  // led_status[x][y][0] = 0;
-  // led_status[x][y][1] = 0;
-
-  // y++;
-
-  // if (y == 9) {
-  //   x++;
-  //   y = 0;
-  // }
-  // if (x == 9) {
-  //   x = 0;
-  //   y = 0;
-  // }
-
-  // led_status[x][y][0] = 64;
-  // led_status[x][y][1] = 0;
-  // if (button_status[1][1] == 1) {
-  //   MyTim->setOverflow(5, HERTZ_FORMAT);
+  
+  // if (button_status[6][1] == 0) {
+  //   MyTim->setOverflow(750, HERTZ_FORMAT);
   // }
   // else {
-  //   MyTim->setOverflow(500, HERTZ_FORMAT);
+  //   MyTim->setOverflow(20, HERTZ_FORMAT);
   // }
 
-  temp_time++;
-  //brightness_subtract = (sin(temp_time / 10) * 0.5 + 0.5) * 16.0;
+  //temp_time++;
+  //brightness_subtract = (sin(temp_time / 20) * 0.5 + 0.5) * 16.0;
 
-  //MyTim->setOverflow(100 * ((sin(temp_time / 30) * 0.5) + 0.55), HERTZ_FORMAT);
+  for (int x = 0; x < 9; x++) {
+    for (int y = 0; y < 9; y++) {
+      led_status[x][y][0] = button_status[x][y] * 4;
+    }
+  }
+
+  //MyTim->setOverflow(750 * ((sin(temp_time / 30) * 0.5) + 0.55), HERTZ_FORMAT);
   //readButtons(1);
 
-  // setState_NPL_SW(HIGH); //load parallel data into registers
-  // delay(1);
-  // setState_NPL_SW(LOW);  //enable serial shift mode
-  // delay(1);
-
-  // delay(500);
-  // triggerMux(2);
-  // writeOrange();
-  // delay(500);
-  // triggerMux(3);
-  // writeOrange();
-  // delay(500);
+  // for (int idx = 0; idx < 56; idx++) {
+  //   // //HC165_clockCycle();
+  //   digitalWrite(CP_SW, HIGH);
+  //   delayMicroseconds(1);
+  //   digitalWrite(CP_SW, LOW);
+  //   delayMicroseconds(1);
+  //   if (button_index_map[mux_idx][idx] != -1) {
+  //     button_status[(idx * 3) + mux_idx - 1][0] = readState_Q_SW();
+  //   }
+  // }
 
   // if (get_interrupt_call()) {
   //   temp_mux_idx++;
@@ -165,8 +173,10 @@ void displayFragment(int mux_idx, int frame) {
   for (int idx = 0; idx < 27; idx++) {
     if (fragment[idx][0] - brightness_subtract > frame) {
       serial_data_out[led_register_map_red[idx]] = 1;
+      //serial_data_out[led_register_map_green[idx]] = 1;
     }
     if (fragment[idx][1] - brightness_subtract > frame) {
+      serial_data_out[led_register_map_red[idx]] = 1;
       serial_data_out[led_register_map_green[idx]] = 1;
     }
 
@@ -175,18 +185,14 @@ void displayFragment(int mux_idx, int frame) {
 
 }
 
-static inline int readButtons(int mux_idx) {
-  setState_NPL_SW(HIGH); //load parallel data into registers
-  delay(1);
-  setState_NPL_SW(LOW);  //enable serial shift mode
-  delay(1);
+void readButtons(int mux_idx) {
+  setState_NPL_SW(LOW); //load parallel data into registers
+  setState_NPL_SW(HIGH);  //enable serial shift mode
 
-  // for (int idx = 0; idx < 32; idx++) {
-  //   HC165_clockCycle();
-  //   if (button_index_map[mux_idx][idx] != -1) {
-  //     button_status[(idx * 3) + mux_idx - 1][0] = readState_Q_SW();
-  //   }
-  // }
+  for (int temp = 0; temp < 32; temp++) {
+    HC165_clockCycle();
+    button_status[button_index_map[mux_idx][temp][0]][button_index_map[mux_idx][temp][1]] = readState_Q_SW();
+  }
 }
 
 void writeRed() {
