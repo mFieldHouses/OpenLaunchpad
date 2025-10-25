@@ -4,7 +4,24 @@
 #include "HardwareTimer.h"
 #include "logo.h"
 
-const int NUMLEDS = 81;
+
+// CONFIGURATION FOR USER ========================================================
+
+const int logo_timeout = 1000; //The amount time the logo will show for upon startup of the launchpad, in milliseconds.
+const char[] device_name = "OpenLaunchpad Mini MK2"; //The name for the device that will show up when connected to a computer via USB.
+
+// END CONFIGURATION FOR USER ====================================================
+
+// DO NOT CHANGE ANYTHING BEYOND THIS POINT IF YOU DON'T KNOW WHAT YOU'RE DOING
+
+
+
+
+
+
+
+
+
 
 int led_status[9][9][2] = {{0,0}};
 bool button_status[9][9] = {{0}};
@@ -81,7 +98,7 @@ void setup() {
 
   writeBitmap(LOGO_BITMAP);
 
-  delay(2000);
+  delay(logo_timeout);
 }
 
 int brightness_subtract = 0;
@@ -120,6 +137,7 @@ void loop() {
   for (int x = 0; x < 9; x++) {
     for (int y = 0; y < 9; y++) {
       led_status[x][y][0] = button_status[x][y] * 4;
+      led_status[x][y][1] = button_status[x][y] * 4;
     }
   }
 
@@ -170,7 +188,6 @@ void displayFragment(int mux_idx, int frame) {
       //serial_data_out[led_register_map_green[idx]] = 1;
     }
     if (fragment[idx][1] - brightness_subtract > frame) {
-      serial_data_out[led_register_map_red[idx]] = 1;
       serial_data_out[led_register_map_green[idx]] = 1;
     }
 
