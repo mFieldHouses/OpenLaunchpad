@@ -8,7 +8,7 @@
 
 // CONFIGURATION FOR USER - YOU CAN CHANGE THESE VALUES TO WHATEVER YOU WANT ====
 
-const int splash_screen_mode = 2; //What the splash screen will show upon startup of the launchpad. Possible values are:
+const int splash_screen_mode = 1; //What the splash screen will show upon startup of the launchpad. Possible values are:
 // 0: Show logo as defined in logo.h for logo_timeout (line 14) milliseconds.
 // 1: Show scrolling text as defined in startup_text (line 16)
 // 2: Show animation
@@ -17,7 +17,7 @@ const int splash_animation_mode = 0;
 
 const int logo_timeout = 1000;
 char startup_text[] = "OpenLaunchpad";
-int startup_text_frame_time = 45; //The time before the scrolling text will move one pixel to the left, in milliseconds.
+int startup_text_frame_time = 85; //The time before the scrolling text will move one pixel to the left, in milliseconds.
 char device_name[] = "OpenLaunchpad Mini MK2"; //The name for the device that will show up when connected to a computer via USB.
 
 // END CONFIGURATION FOR USER ====================================================
@@ -71,7 +71,7 @@ void setup() {
   //setup_timer();
 
   MyTim->setMode(1, TIMER_OUTPUT_DISABLED);
-  MyTim->setOverflow(1200, HERTZ_FORMAT); //1200
+  MyTim->setOverflow(750, HERTZ_FORMAT); //1200
   MyTim->attachInterrupt(timer_callback);
   MyTim->resume();
 
@@ -97,15 +97,6 @@ void setup() {
   // led_status[4][6][0] = 4;
   // led_status[5][6][0] = 4;
 
-  // led_status[3][3][0] = 4;
-  // led_status[3][4][0] = 3;
-  // led_status[3][5][0] = 2;
-  // led_status[3][6][0] = 1;
-  // led_status[4][3][1] = 4;
-  // led_status[4][4][1] = 3;
-  // led_status[4][5][1] = 2;
-  // led_status[4][6][1] = 1;
-
 
   // //writeOrange();
 
@@ -118,7 +109,7 @@ void setup() {
       scrollString(startup_text, std::size(startup_text), startup_text_frame_time);
       break;
     case 2:
-      shockWaveAtPosition(8, 0, 1, 1, 14, 5, 0.8, 0.77);
+      shockWaveAtPosition(8, 0, 1, 0, 16, 5, 0.8, 0.79);
       break;
   }
 
@@ -130,13 +121,13 @@ void setup() {
 int brightness_subtract = 0;
 
 void timer_callback() {
-  frame++;
+  if (mux_idx == 2) {
+    frame++;
+  }
 
-  //if (frame == 4) {
   mux_idx++;
-  //}
   mux_idx = mux_idx % 3;
-  frame = frame % 13;
+  frame = frame % 4;
 
   triggerMux(0);
   displayFragment(mux_idx, frame);
@@ -164,12 +155,11 @@ void loop() {
   //   MyTim->setOverflow(750, HERTZ_FORMAT);
   // }
   // else if (button_status[1][8] == 1) {
-  //   MyTim->setOverflow(1200, HERTZ_FORMAT);
+  //   MyTim->setOverflow(500, HERTZ_FORMAT);
   // }
   // else {
-  //   MyTim->setOverflow(1500, HERTZ_FORMAT);
+  //   MyTim->setOverflow(750, HERTZ_FORMAT);
   // }
-  //OL_CHAR _character_index_to_write = OL_CHAR_A;
 
   for (int x = 0; x < 9; x++) {
     for (int y = 0; y < 9; y++) {
@@ -178,8 +168,17 @@ void loop() {
     }
   }
 
-  writeCharacter(OL_CHAR_a, 0, 1, 4, 0);
-  writeCharacter(OL_CHAR_b, 5, 1, 4, 0);
+  // writeCharacter(OL_CHAR_a, 0, 1, 4, 0);
+  // writeCharacter(OL_CHAR_b, 5, 1, 4, 0);
+
+  led_status[3][3][0] = 4;
+  led_status[3][4][0] = 3;
+  led_status[3][5][0] = 2;
+  led_status[3][6][0] = 1;
+  led_status[4][3][1] = 4;
+  led_status[4][4][1] = 3;
+  led_status[4][5][1] = 2;
+  led_status[4][6][1] = 1;
 
   // for (int x = 0; x < 9; x++) {
   //   for (int y = 0; y < 9; y++) {
@@ -212,11 +211,11 @@ void displayFragment(int mux_idx, int frame) {
   int serial_data_out[56] = {0};
 
   for (int idx = 0; idx < 27; idx++) {
-    if (pow(fragment[idx][0], 2) > frame) {
+    if (fragment[idx][0] > frame) {
       serial_data_out[led_register_map_red[idx]] = 1;
       //serial_data_out[led_register_map_green[idx]] = 1;
     }
-    if (pow(fragment[idx][1], 2) > frame) {
+    if (fragment[idx][1] > frame) {
       serial_data_out[led_register_map_green[idx]] = 1;
     }
 
@@ -276,24 +275,14 @@ void writeBitmap(int bitmap_data[9][9][2]) {
   timer_callback();
 }
 
-// void scrollString(char input_string[], int frame_time) {
-//   for (int idx = 0; idx < sizeof(input_string)/sizeof(char); idx++) {
-//     switch (input_string[idx]) {
-//       case 'A':
-//         break;
-//     }
-//   }
-
-// }
-
 void scrollString(char input_string[], int string_size, int frame_time) {
-  OL_CHAR _result_string[string_size] = {OL_CHAR_QUESTION_MARK};
+  OL_CHAR _result_string[string_size - 1] = {OL_CHAR_QUESTION_MARK};
 
-  for (int char_idx = 0; char_idx < string_size; char_idx++) {
+  for (int char_idx = 0; char_idx < string_size - 1; char_idx++) {
     _result_string[char_idx] = getOLCharIndex(input_string[char_idx]);
   }
 
-  scrollChars(_result_string, string_size, 35);
+  scrollChars(_result_string, string_size - 1, frame_time);
 }
 
 OL_CHAR getOLCharIndex(char character) {
@@ -310,11 +299,18 @@ OL_CHAR getOLCharIndex(char character) {
 
 void scrollChars(OL_CHAR input_chars[], int char_string_length, int frame_time) { //string is array of 
   int _origin_x = 9;
+  int _character_offsets[char_string_length] = {0};
+  int _total_string_length = 0;
 
-  while (_origin_x > char_string_length * -4 - 15) {
+  for (int idx = 1; idx < char_string_length; idx++) {
+    _character_offsets[idx] = OL_CHARACTERS[static_cast<int>(input_chars[idx - 1])].width + 1 + _character_offsets[idx - 1];
+    _total_string_length += OL_CHARACTERS[static_cast<int>(input_chars[idx - 1])].width + 1;
+  }
+
+  while (_origin_x > _total_string_length * -1 - 5) {
     clearScreen();
     for (int char_idx = 0; char_idx < char_string_length; char_idx++) {
-      writeCharacter(input_chars[char_idx], char_idx * 5 + _origin_x, 2, 4, 1);
+      writeCharacter(input_chars[char_idx], _character_offsets[char_idx] + _origin_x, 2, 4, 1);
     }
     
     delay(frame_time);
@@ -323,15 +319,17 @@ void scrollChars(OL_CHAR input_chars[], int char_string_length, int frame_time) 
 }
 
 void writeCharacter(int character_index, int posx, int posy, int red, int green) {
+  int _char_width = OL_CHARACTERS[character_index].width;
+
   if (posx > -5 && posx < 9 && posy > -7 && posy < 9){
-    for (int x = 0; x < 4; x++) {
+    for (int x = 0; x < _char_width; x++) {
       for (int y = 0; y < 6; y++) {
         if (x + posx > 8 || y + posy > 8) {
           break;
         }
 
-        led_status[x + posx][y + posy][0] = red * OL_CHARACTERS[character_index][y][x];
-        led_status[x + posx][y + posy][1] = green * OL_CHARACTERS[character_index][y][x];
+        led_status[x + posx][y + posy][0] = red * OL_CHARACTERS[character_index].bitmap[y][x];
+        led_status[x + posx][y + posy][1] = green * OL_CHARACTERS[character_index].bitmap[y][x];
       }
     }
   }

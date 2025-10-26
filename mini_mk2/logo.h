@@ -1,4 +1,4 @@
-int LOGO_BITMAP[9][9][2] = { //This is a 3-dimensional array. The two numbers represent the Red and Green components for the pixel at that coordinate. Max intensity is 4. 
+int LOGO_BITMAP[9][9][2] = { //This is a 3-dimensional array. The two numbers represent the Red and Green components for the pixel at that coordinate. Max intensity is 3. 0 is off. 
   {{0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}},
   {{0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}},
   {{0,0}, {0,0}, {4,4}, {4,4}, {4,4}, {0,0}, {0,0}, {0,0}, {0,0}},
@@ -21,3 +21,4 @@ int LOGO_MASK[9][9] = { //Currently not in use. Just ignore this.
   {0,0,0,0,0,0,0,0,0},
   {0,0,0,0,0,0,0,0,0}
 };
+
