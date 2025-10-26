@@ -16,7 +16,7 @@ const int splash_screen_mode = 1; //What the splash screen will show upon startu
 const int splash_animation_mode = 0;
 
 const int logo_timeout = 1000;
-char startup_text[] = "OpenLaunchpad";
+char startup_text[] = "Lake Lunar";
 int startup_text_frame_time = 85; //The time before the scrolling text will move one pixel to the left, in milliseconds.
 char device_name[] = "OpenLaunchpad Mini MK2"; //The name for the device that will show up when connected to a computer via USB.
 
@@ -106,7 +106,7 @@ void setup() {
       delay(logo_timeout);
       break;
     case 1:
-      scrollString(startup_text, std::size(startup_text), startup_text_frame_time);
+      scrollString(startup_text, std::size(startup_text), startup_text_frame_time, 1);
       break;
     case 2:
       shockWaveAtPosition(8, 0, 1, 0, 16, 5, 0.8, 0.79);
@@ -275,14 +275,14 @@ void writeBitmap(int bitmap_data[9][9][2]) {
   timer_callback();
 }
 
-void scrollString(char input_string[], int string_size, int frame_time) {
+void scrollString(char input_string[], int string_size, int frame_time, int height) {
   OL_CHAR _result_string[string_size - 1] = {OL_CHAR_QUESTION_MARK};
 
   for (int char_idx = 0; char_idx < string_size - 1; char_idx++) {
     _result_string[char_idx] = getOLCharIndex(input_string[char_idx]);
   }
 
-  scrollChars(_result_string, string_size - 1, frame_time);
+  scrollChars(_result_string, string_size - 1, frame_time, height);
 }
 
 OL_CHAR getOLCharIndex(char character) {
@@ -297,20 +297,20 @@ OL_CHAR getOLCharIndex(char character) {
   return _result;
 }
 
-void scrollChars(OL_CHAR input_chars[], int char_string_length, int frame_time) { //string is array of 
+void scrollChars(OL_CHAR input_chars[], int char_string_length, int frame_time, int height) { //string is array of 
   int _origin_x = 9;
   int _character_offsets[char_string_length] = {0};
   int _total_string_length = 0;
 
   for (int idx = 1; idx < char_string_length; idx++) {
-    _character_offsets[idx] = OL_CHARACTERS[static_cast<int>(input_chars[idx - 1])].width + 1 + _character_offsets[idx - 1];
-    _total_string_length += OL_CHARACTERS[static_cast<int>(input_chars[idx - 1])].width + 1;
+    _character_offsets[idx] = OL_CHARACTERS[input_chars[idx - 1]].width + 1 + _character_offsets[idx - 1];
+    _total_string_length += OL_CHARACTERS[input_chars[idx - 1]].width + 1;
   }
 
-  while (_origin_x > _total_string_length * -1 - 5) {
+  while (_origin_x > _total_string_length * -1 - 6) {
     clearScreen();
     for (int char_idx = 0; char_idx < char_string_length; char_idx++) {
-      writeCharacter(input_chars[char_idx], _character_offsets[char_idx] + _origin_x, 2, 4, 1);
+      writeCharacter(input_chars[char_idx], _character_offsets[char_idx] + _origin_x, height + OL_CHARACTERS[input_chars[char_idx]].y_offset, 4, 1);
     }
     
     delay(frame_time);
