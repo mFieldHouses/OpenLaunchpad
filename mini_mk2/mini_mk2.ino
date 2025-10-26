@@ -13,11 +13,17 @@ const int splash_screen_mode = 1; //What the splash screen will show upon startu
 // 1: Show scrolling text as defined in startup_text (line 16)
 // 2: Show animation
 
+//Startup animation
 const int splash_animation_mode = 0;
 
+//Startup logo
 const int logo_timeout = 1000;
-char startup_text[] = "Lake Lunar";
-int startup_text_frame_time = 85; //The time before the scrolling text will move one pixel to the left, in milliseconds.
+
+//Startup scrolling text
+char startup_text[] = "Pastaplex Music";
+int startup_text_frame_time = 50; //The time it will take the scrolling text to move on pixel further.
+
+//USB device
 char device_name[] = "OpenLaunchpad Mini MK2"; //The name for the device that will show up when connected to a computer via USB.
 
 // END CONFIGURATION FOR USER ====================================================
@@ -36,10 +42,11 @@ bool previous_button_status[9][9] = {{0}};
 //int led_index_map[9][9] = {{0, 13, 14, 15, 16, 17, 18, 19, 20}, {0, 13, 14, 15, 16, 17, 18, 19, 20}, {0, 13, 14, 15, 16, 17, 18, 19, 20}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {2, 4, 5, 6, 8, 25, 26, 27, 28}, {2, 4, 5, 6, 8, 25, 26, 27, 28}, {2, 4, 5, 6, 8, 25, 26, 27, 28}};
 int led_index_map[9][9] = {{0, 11, 12, 13, 14, 15, 16, 17, 18}, {0, 11, 12, 13, 14, 15, 16, 17, 18}, {0, 11, 12, 13, 14, 15, 16, 17, 18}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {2, 3, 4, 5, 6, 23, 24, 25, 26}, {2, 3, 4, 5, 6, 23, 24, 25, 26}, {2, 3, 4, 5, 6, 23, 24, 25, 26}};
 int button_index_map[3][32][2] = {
-  {{6,7},{6,6},{6,5},{6,4},{6,3},{6,2},{6,1},{3,8},{3,7},{3,6},{3,5},{3,4},{3,3},{3,2},{3,1},{0,8},{0,7},{0,6},{0,5},{0,4},{0,3},{0,2},{0,1},{0,0},{2,2},{2,2},{2,2},{1,1},{1,1},{1,1},{1,1},{1,1}},
-  {{7,7},{7,6},{7,5},{7,4},{7,3},{7,2},{7,1},{4,8},{4,7},{4,6},{4,5},{4,4},{4,3},{4,2},{4,1},{1,8},{1,7},{1,6},{1,5},{1,4},{1,3},{1,2},{1,1},{1,0},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2}},
-  {{8,7},{8,6},{8,5},{8,4},{8,3},{8,2},{8,1},{5,8},{5,7},{5,6},{5,5},{5,4},{5,3},{5,2},{5,1},{2,8},{2,7},{2,6},{2,5},{2,4},{2,3},{2,2},{2,1},{2,0},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2},{2,2}}
+  {{6,8},{6,7},{6,6},{6,5},{6,4},{6,3},{6,2},{6,1},{3,8},{3,7},{3,6},{3,5},{3,4},{3,3},{3,2},{3,1},{0,8},{0,7},{0,6},{0,5},{0,4},{0,3},{0,2},{0,1},{0,0},{8,0},{8,0},{8,0},{8,0},{6,0},{3,0},{0,0}},
+  {{7,8},{7,7},{7,6},{7,5},{7,4},{7,3},{7,2},{7,1},{4,8},{4,7},{4,6},{4,5},{4,4},{4,3},{4,2},{4,1},{1,8},{1,7},{1,6},{1,5},{1,4},{1,3},{1,2},{1,1},{1,0},{8,0},{8,0},{8,0},{8,0},{7,0},{4,0},{1,0}},
+  {{8,8},{8,7},{8,6},{8,5},{8,4},{8,3},{8,2},{8,1},{5,8},{5,7},{5,6},{5,5},{5,4},{5,3},{5,2},{5,1},{2,8},{2,7},{2,6},{2,5},{2,4},{2,3},{2,2},{2,1},{2,0},{8,0},{8,0},{8,0},{8,0},{8,0},{5,0},{2,0}}
   };
+//int button_index_map[3][32][2] = {{{4,1}}};
 
 int led_register_map_green[27] = {0,1,2, 8,9,10,11, 16,17,18,19, 24,25,26,27, 32,33,34,35, 40,41,42,43, 48,49,50,51};
 int led_register_map_red[27] = {3,4,5, 12,13,14,15, 20,21,22,23, 28,29,30,31, 36,37,38,39, 44,45,46,47, 52,53,54,55};
@@ -109,7 +116,7 @@ void setup() {
       scrollString(startup_text, std::size(startup_text), startup_text_frame_time, 1);
       break;
     case 2:
-      shockWaveAtPosition(8, 0, 1, 0, 16, 5, 0.8, 0.79);
+      shockWaveAtPosition(11, 0, 1, 1, 19, 5, 0.8, 0.81);
       break;
   }
 
@@ -229,8 +236,8 @@ void readButtons(int mux_idx) {
   setState_NPL_SW(HIGH);  //enable serial shift mode
 
   for (int temp = 0; temp < 32; temp++) {
-    HC165_clockCycle();
     button_status[button_index_map[mux_idx][temp][0]][button_index_map[mux_idx][temp][1]] = readState_Q_SW();
+    HC165_clockCycle();
   }
 }
 
@@ -239,7 +246,7 @@ void shockWaveAtPosition(unsigned int origin_x, unsigned int origin_y, int red, 
   int _current_radius = 0;
   int _frame_delay = frame_time;
 
-  while (_current_radius <= max_radius) {
+  while (_current_radius < max_radius) {
     for (int x = 0; x < 9; x++) {
       for (int y = 0; y < 9; y++) {
         double _distance_to_origin = sqrt(sq(origin_x - x) + sq(origin_y - y));
@@ -434,5 +441,3 @@ void HC165_clockCycle() {
   digitalWrite(CP_SW, HIGH);
   digitalWrite(CP_SW, LOW);
 }
-
-// void drawCharacterAtPosition() {}
