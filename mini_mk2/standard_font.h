@@ -3,9 +3,18 @@
 //Supported characters are:
 //AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890 .,:;!?/-+=()
 
-enum OL_CHAR {OL_CHAR_A, OL_CHAR_a, OL_CHAR_B, OL_CHAR_b, OL_CHAR_C, OL_CHAR_c, OL_CHAR_D, OL_CHAR_d, OL_CHAR_E, OL_CHAR_e, OL_CHAR_F, OL_CHAR_f, OL_CHAR_G, OL_CHAR_g, OL_CHAR_H, OL_CHAR_h, OL_CHAR_I, OL_CHAR_i, OL_CHAR_J, OL_CHAR_j, OL_CHAR_K, OL_CHAR_k, OL_CHAR_L, OL_CHAR_l, OL_CHAR_M, OL_CHAR_m, OL_CHAR_N, OL_CHAR_n, OL_CHAR_O, OL_CHAR_o, OL_CHAR_P, OL_CHAR_p, OL_CHAR_Q, OL_CHAR_q, OL_CHAR_R, OL_CHAR_r, OL_CHAR_S, OL_CHAR_s, OL_CHAR_T, OL_CHAR_t, OL_CHAR_U, OL_CHAR_u, OL_CHAR_V, OL_CHAR_v, OL_CHAR_W, OL_CHAR_w, OL_CHAR_X, OL_CHAR_x, OL_CHAR_Y, OL_CHAR_y, OL_CHAR_Z, OL_CHAR_z, OL_CHAR_ZERO, OL_CHAR_ONE, OL_CHAR_TWO,OL_CHAR_THREE, OL_CHAR_FOUR, OL_CHAR_FIVE, OL_CHAR_SIX, OL_CHAR_SEVEN, OL_CHAR_EIGHT, OL_CHAR_NINE, OL_CHAR_SPACE, OL_CHAR_PERIOD, OL_CHAR_COMMA, OL_CHAR_COLON, OL_CHAR_SEMICOLON, OL_CHAR_EXLCAMATION_MARK, OL_CHAR_QUESTION_MARK, OL_CHAR_SLASH, OL_CHAR_MINUS, OL_CHAR_PLUS, OL_CHAR_EQUALS, OL_CHAR_PARENTHESIS_OPEN, OL_CHAR_PARENTHESIS_CLOSE};
+enum OL_CHAR {OL_CHAR_A, OL_CHAR_a, OL_CHAR_B, OL_CHAR_b, OL_CHAR_C, OL_CHAR_c, OL_CHAR_D, OL_CHAR_d, OL_CHAR_E, OL_CHAR_e, OL_CHAR_F, OL_CHAR_f, OL_CHAR_G, OL_CHAR_g, OL_CHAR_H, OL_CHAR_h, OL_CHAR_I, OL_CHAR_i, OL_CHAR_J, OL_CHAR_j, OL_CHAR_K, OL_CHAR_k, OL_CHAR_L, OL_CHAR_l, OL_CHAR_M, OL_CHAR_m, OL_CHAR_N, OL_CHAR_n, OL_CHAR_O, OL_CHAR_o, OL_CHAR_P, OL_CHAR_p, OL_CHAR_Q, OL_CHAR_q, OL_CHAR_R, OL_CHAR_r, OL_CHAR_S, OL_CHAR_s, OL_CHAR_T, OL_CHAR_t, OL_CHAR_U, OL_CHAR_u, OL_CHAR_V, OL_CHAR_v, OL_CHAR_W, OL_CHAR_w, OL_CHAR_X, OL_CHAR_x, OL_CHAR_Y, OL_CHAR_y, OL_CHAR_Z, OL_CHAR_z, OL_CHAR_ZERO, OL_CHAR_ONE, OL_CHAR_TWO,OL_CHAR_THREE, OL_CHAR_FOUR, OL_CHAR_FIVE, OL_CHAR_SIX, OL_CHAR_SEVEN, OL_CHAR_EIGHT, OL_CHAR_NINE, OL_CHAR_SPACE, OL_CHAR_PERIOD, OL_CHAR_COMMA, OL_CHAR_COLON, OL_CHAR_SEMICOLON, OL_CHAR_EXCLAMATION_MARK, OL_CHAR_QUESTION_MARK, OL_CHAR_SLASH, OL_CHAR_MINUS, OL_CHAR_PLUS, OL_CHAR_EQUALS, OL_CHAR_PARENTHESIS_OPEN, OL_CHAR_PARENTHESIS_CLOSE, OL_CHAR_UNKNOWN_CHAR};
 
-int OL_CHARACTERS[76][6][4] = {
+const char CHAR_MAP[76] = {
+  'A','a','B','b','C','c','D','d','E','e','F','f','G','g','H','h',
+  'I','i','J','j','K','k','L','l','M','m','N','n','O','o','P','p',
+  'Q','q','R','r','S','s','T','t','U','u','V','v','W','w','X','x',
+  'Y','y','Z','z',
+  '0','1','2','3','4','5','6','7','8','9',
+  ' ','.',',',':',';','!','?','/','-','+','=','(',')','?'
+};
+
+const int OL_CHARACTERS[76][6][4] = {
   // A
   {{0,1,1,0},{1,0,0,1},{1,0,0,1},{1,1,1,1},{1,0,0,1},{1,0,0,1}},
   // a
@@ -29,7 +38,7 @@ int OL_CHARACTERS[76][6][4] = {
   // F
   {{1,1,1,1},{1,0,0,0},{1,1,1,0},{1,0,0,0},{1,0,0,0},{1,0,0,0}},
   // f
-  {{0,0,0,0},{0,1,1,0},{1,0,0,0},{1,1,0,0},{1,0,0,0},{1,0,0,0}},
+  {{0,0,0,0},{0,1,1,1},{1,0,0,0},{1,1,0,0},{1,0,0,0},{1,0,0,0}},
   // G
   {{0,1,1,0},{1,0,0,1},{1,0,0,0},{1,0,1,1},{1,0,0,1},{0,1,1,0}},
   // g
@@ -37,7 +46,7 @@ int OL_CHARACTERS[76][6][4] = {
   // H
   {{1,0,0,1},{1,0,0,1},{1,1,1,1},{1,0,0,1},{1,0,0,1},{1,0,0,1}},
   // h
-  {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,1,0,0},{1,0,1,0},{1,0,1,0}},
+  {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,1,1,0},{1,0,0,1},{1,0,0,1}},
   // I
   {{1,1,1,1},{0,1,0,0},{0,1,0,0},{0,1,0,0},{0,1,0,0},{1,1,1,1}},
   // i
@@ -49,7 +58,7 @@ int OL_CHARACTERS[76][6][4] = {
   // K
   {{1,0,0,1},{1,0,1,0},{1,1,0,0},{1,1,1,0},{1,0,0,1},{1,0,0,1}},
   // k
-  {{1,0,0,0},{1,0,0,0},{1,0,1,0},{1,1,0,0},{1,0,1,0},{1,0,1,0}},
+  {{1,0,0,0},{1,0,0,1},{1,0,1,0},{1,1,0,0},{1,0,1,0},{1,0,0,1}},
   // L
   {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,1,1,1}},
   // l
@@ -61,19 +70,19 @@ int OL_CHARACTERS[76][6][4] = {
   // N
   {{1,0,0,1},{1,1,0,1},{1,1,0,1},{1,0,1,1},{1,0,1,1},{1,0,0,1}},
   // n
-  {{0,0,0,0},{1,1,0,0},{1,0,1,0},{1,0,1,0},{1,0,1,0},{1,0,1,0}},
+  {{0,0,0,0},{1,1,1,0},{1,0,0,1},{1,0,0,1},{1,0,0,1},{1,0,0,1}},
   // O
   {{0,1,1,0},{1,0,0,1},{1,0,0,1},{1,0,0,1},{1,0,0,1},{0,1,1,0}},
   // o
-  {{0,0,0,0},{0,1,0,0},{1,0,1,0},{1,0,1,0},{1,0,1,0},{0,1,0,0}},
+  {{0,0,0,0},{0,1,1,0},{1,0,0,1},{1,0,0,1},{1,0,0,1},{0,1,1,0}},
   // P
   {{1,1,1,0},{1,0,0,1},{1,0,0,1},{1,1,1,0},{1,0,0,0},{1,0,0,0}},
   // p
-  {{0,0,0,0},{1,1,0,0},{1,0,1,0},{1,1,0,0},{1,0,0,0},{1,0,0,0}},
+  {{0,0,0,0},{1,1,1,0},{1,0,0,1},{1,1,1,0},{1,0,0,0},{1,0,0,0}},
   // Q
   {{0,1,1,0},{1,0,0,1},{1,0,0,1},{1,0,0,1},{0,1,1,0},{0,0,0,1}},
   // q
-  {{0,0,0,0},{0,0,1,1},{0,1,0,1},{0,0,1,1},{0,0,0,1},{0,0,0,1}},
+  {{0,0,0,0},{0,1,1,1},{1,0,0,1},{0,1,1,1},{0,0,0,1},{0,0,0,1}},
   // R
   {{1,1,1,0},{1,0,0,1},{1,0,0,1},{1,1,1,0},{1,0,0,1},{1,0,0,1}},
   // r
@@ -89,7 +98,7 @@ int OL_CHARACTERS[76][6][4] = {
   // U
   {{1,0,0,1},{1,0,0,1},{1,0,0,1},{1,0,0,1},{1,0,0,1},{0,1,1,0}},
   // u
-  {{0,0,0,0},{1,0,1,0},{1,0,1,0},{1,0,1,0},{1,0,1,0},{0,1,0,0}},
+  {{0,0,0,0},{1,0,0,1},{1,0,0,1},{1,0,0,1},{1,0,0,1},{0,1,1,0}},
   // V
   {{1,0,0,1},{1,0,0,1},{1,0,0,1},{1,0,0,1},{0,1,1,0},{0,1,1,0}},
   // v
@@ -101,7 +110,7 @@ int OL_CHARACTERS[76][6][4] = {
   // X
   {{1,0,0,1},{1,0,0,1},{0,1,1,0},{0,1,1,0},{1,0,0,1},{1,0,0,1}},
   // x
-  {{0,0,0,0},{1,0,1,0},{1,0,1,0},{0,1,0,0},{1,0,1,0},{1,0,1,0}},
+  {{0,0,0,0},{1,0,0,1},{1,0,0,1},{0,1,1,0},{1,0,0,1},{1,0,0,1}},
   // Y
   {{1,0,0,1},{1,0,0,1},{1,0,1,0},{0,1,0,0},{0,1,0,0},{0,1,0,0}},
   // y
@@ -141,7 +150,7 @@ int OL_CHARACTERS[76][6][4] = {
   // Semicolon
   {{0,0,0,0},{0,1,0,0},{0,0,0,0},{0,0,0,0},{0,1,0,0},{0,1,0,0}},
   // Exclamation mark
-  {{0,0,0,0},{0,1,0,0},{0,1,0,0},{0,1,0,0},{0,0,0,0},{0,1,0,0}},
+  {{0,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0},{0,0,0,0},{1,0,0,0}},
   // Question mark
   {{0,0,0,0},{1,1,0,0},{0,0,1,0},{0,1,0,0},{0,0,0,0},{0,1,0,0}},
   // Slash
@@ -155,5 +164,7 @@ int OL_CHARACTERS[76][6][4] = {
   // Parenthesis open
   {{0,1,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0},{0,1,0,0}},
   // Parenthesis close
-  {{0,1,0,0},{0,0,1,0},{0,0,1,0},{0,0,1,0},{0,0,1,0},{0,1,0,0}}
+  {{0,1,0,0},{0,0,1,0},{0,0,1,0},{0,0,1,0},{0,0,1,0},{0,1,0,0}},
+  // Unknown Char
+	{{0,1,0,1},{1,0,1,0},{0,1,0,1},{1,0,1,0},{0,1,0,1},{1,0,1,0}}
 };

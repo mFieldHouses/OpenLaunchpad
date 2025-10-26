@@ -3,13 +3,21 @@
 #include "stm32f1xx.h"
 #include "HardwareTimer.h"
 #include "logo.h"
+#include "standard_font.h"
 
 
 // CONFIGURATION FOR USER - YOU CAN CHANGE THESE VALUES TO WHATEVER YOU WANT ====
 
-const int logo_timeout = 1000; //The amount time the logo will show for upon startup of the launchpad, in milliseconds. The logo shown is defined in "logo.h".
-const bool show_text = false; //Whether the launchpad should show the text defined by startup_text instead of the logo defined in "logo.h".
-char startup_text[] = "OpenLaunchpad"; //The text that will show when the device is booting up and show_text is true.
+const int splash_screen_mode = 2; //What the splash screen will show upon startup of the launchpad. Possible values are:
+// 0: Show logo as defined in logo.h for logo_timeout (line 14) milliseconds.
+// 1: Show scrolling text as defined in startup_text (line 16)
+// 2: Show animation
+
+const int splash_animation_mode = 0;
+
+const int logo_timeout = 1000;
+char startup_text[] = "OpenLaunchpad";
+int startup_text_frame_time = 45; //The time before the scrolling text will move one pixel to the left, in milliseconds.
 char device_name[] = "OpenLaunchpad Mini MK2"; //The name for the device that will show up when connected to a computer via USB.
 
 // END CONFIGURATION FOR USER ====================================================
@@ -23,6 +31,7 @@ char device_name[] = "OpenLaunchpad Mini MK2"; //The name for the device that wi
 
 int led_status[9][9][2] = {{0,0}};
 bool button_status[9][9] = {{0}};
+bool previous_button_status[9][9] = {{0}};
 
 //int led_index_map[9][9] = {{0, 13, 14, 15, 16, 17, 18, 19, 20}, {0, 13, 14, 15, 16, 17, 18, 19, 20}, {0, 13, 14, 15, 16, 17, 18, 19, 20}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {2, 4, 5, 6, 8, 25, 26, 27, 28}, {2, 4, 5, 6, 8, 25, 26, 27, 28}, {2, 4, 5, 6, 8, 25, 26, 27, 28}};
 int led_index_map[9][9] = {{0, 11, 12, 13, 14, 15, 16, 17, 18}, {0, 11, 12, 13, 14, 15, 16, 17, 18}, {0, 11, 12, 13, 14, 15, 16, 17, 18}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {1, 7, 8, 9, 10, 19, 20, 21, 22}, {2, 3, 4, 5, 6, 23, 24, 25, 26}, {2, 3, 4, 5, 6, 23, 24, 25, 26}, {2, 3, 4, 5, 6, 23, 24, 25, 26}};
@@ -100,15 +109,22 @@ void setup() {
 
   // //writeOrange();
 
+  switch(splash_screen_mode) {
+    case 0:
+      writeBitmap(LOGO_BITMAP);
+      delay(logo_timeout);
+      break;
+    case 1:
+      scrollString(startup_text, std::size(startup_text), startup_text_frame_time);
+      break;
+    case 2:
+      shockWaveAtPosition(8, 0, 1, 1, 14, 5, 0.8, 0.77);
+      break;
+  }
+
   timer_callback();
   timer_callback();
   timer_callback();
-
-  shockWaveAtPosition(8, 8, 1, 1, 14, 5, 0.75, 0.73);
-
-  writeBitmap(LOGO_BITMAP);
-
-  delay(logo_timeout);
 }
 
 int brightness_subtract = 0;
@@ -133,11 +149,13 @@ void timer_callback() {
 int temp_time = 0;
 
 void button_down_callback(int posx, int posy) {
-
+  led_status[posx][posy][0] = 4;
+  led_status[posx][posy][1] = 4;
 }
 
 void button_up_callback(int posx, int posy) {
-
+  led_status[posx][posy][0] = 0;
+  led_status[posx][posy][1] = 0;
 }
 
 void loop() {
@@ -151,9 +169,7 @@ void loop() {
   // else {
   //   MyTim->setOverflow(1500, HERTZ_FORMAT);
   // }
-
-  //temp_time++;
-  //brightness_subtract = (sin(temp_time / 20) * 0.5 + 0.5) * 16.0;
+  //OL_CHAR _character_index_to_write = OL_CHAR_A;
 
   for (int x = 0; x < 9; x++) {
     for (int y = 0; y < 9; y++) {
@@ -162,31 +178,23 @@ void loop() {
     }
   }
 
-  //MyTim->setOverflow(750 * ((sin(temp_time / 30) * 0.5) + 0.55), HERTZ_FORMAT);
-  //readButtons(1);
+  writeCharacter(OL_CHAR_a, 0, 1, 4, 0);
+  writeCharacter(OL_CHAR_b, 5, 1, 4, 0);
 
-  // for (int idx = 0; idx < 56; idx++) {
-  //   // //HC165_clockCycle();
-  //   digitalWrite(CP_SW, HIGH);
-  //   delayMicroseconds(1);
-  //   digitalWrite(CP_SW, LOW);
-  //   delayMicroseconds(1);
-  //   if (button_index_map[mux_idx][idx] != -1) {
-  //     button_status[(idx * 3) + mux_idx - 1][0] = readState_Q_SW();
+  // for (int x = 0; x < 9; x++) {
+  //   for (int y = 0; y < 9; y++) {
+  //     if (button_status[x][y] == true && previous_button_status[x][y] == false) {
+  //       button_down_callback(x,y);
+  //     }
+  //     else if (button_status[x][y] == false && previous_button_status[x][y] == true) {
+  //       button_down_callback(x,y);
+  //     }
   //   }
   // }
 
-  // if (get_interrupt_call()) {
-  //   temp_mux_idx++;
-
-  //   set_interrupt_call(false);
-  // }
-
-  //TIM3->CNT = 1;
-
-  //writeRed();
-  //triggerMux((temp_mux_idx % 3) + 1);
   delay(10);
+
+  //memcpy(previous_button_status, button_status, sizeof(int) * 81);
 }
 
 void enable_global_interrupts() {
@@ -235,7 +243,7 @@ void shockWaveAtPosition(unsigned int origin_x, unsigned int origin_y, int red, 
   while (_current_radius <= max_radius) {
     for (int x = 0; x < 9; x++) {
       for (int y = 0; y < 9; y++) {
-        double _distance_to_origin = sqrt(pow(origin_x - x, 2) + pow(origin_y - y, 2));
+        double _distance_to_origin = sqrt(sq(origin_x - x) + sq(origin_y - y));
 
         if ((_distance_to_origin >= _current_radius && _distance_to_origin <= _current_radius + thickness) || (_distance_to_origin <= _current_radius && _distance_to_origin >= _current_radius - thickness)) {
           int _color_at_point[2] = {floor(float(red * 4) * (1.0 - _progress)), floor(float(green * 4) * (1.0 - _progress))};
@@ -266,6 +274,67 @@ void writeBitmap(int bitmap_data[9][9][2]) {
   timer_callback();
   timer_callback();
   timer_callback();
+}
+
+// void scrollString(char input_string[], int frame_time) {
+//   for (int idx = 0; idx < sizeof(input_string)/sizeof(char); idx++) {
+//     switch (input_string[idx]) {
+//       case 'A':
+//         break;
+//     }
+//   }
+
+// }
+
+void scrollString(char input_string[], int string_size, int frame_time) {
+  OL_CHAR _result_string[string_size] = {OL_CHAR_QUESTION_MARK};
+
+  for (int char_idx = 0; char_idx < string_size; char_idx++) {
+    _result_string[char_idx] = getOLCharIndex(input_string[char_idx]);
+  }
+
+  scrollChars(_result_string, string_size, 35);
+}
+
+OL_CHAR getOLCharIndex(char character) {
+  OL_CHAR _result = static_cast<OL_CHAR>(75); //unknown character
+  for (int idx = 0; idx < std::size(OL_CHARACTERS); idx++) {
+    if (CHAR_MAP[idx] == character) {
+      _result = static_cast<OL_CHAR>(idx);
+      break;
+    }
+  }
+
+  return _result;
+}
+
+void scrollChars(OL_CHAR input_chars[], int char_string_length, int frame_time) { //string is array of 
+  int _origin_x = 9;
+
+  while (_origin_x > char_string_length * -4 - 15) {
+    clearScreen();
+    for (int char_idx = 0; char_idx < char_string_length; char_idx++) {
+      writeCharacter(input_chars[char_idx], char_idx * 5 + _origin_x, 2, 4, 1);
+    }
+    
+    delay(frame_time);
+    _origin_x -= 1;
+  }
+}
+
+void writeCharacter(int character_index, int posx, int posy, int red, int green) {
+  if (posx > -5 && posx < 9 && posy > -7 && posy < 9){
+    for (int x = 0; x < 4; x++) {
+      for (int y = 0; y < 6; y++) {
+        if (x + posx > 8 || y + posy > 8) {
+          break;
+        }
+
+        led_status[x + posx][y + posy][0] = red * OL_CHARACTERS[character_index][y][x];
+        led_status[x + posx][y + posy][1] = green * OL_CHARACTERS[character_index][y][x];
+      }
+    }
+  }
 }
 
 void writeRed() {
@@ -339,6 +408,11 @@ void triggerMux(int index) { //-1 enables all, 0 disables all
       digitalWrite(MUX1, HIGH);
       break;
   }
+}
+
+void clearScreen() {
+  int _new_led_status[9][9][2] = {{0,0}};
+  memcpy(led_status, _new_led_status, sizeof(int) * 81 * 2);
 }
 
 bool readState_Q_SW() {
