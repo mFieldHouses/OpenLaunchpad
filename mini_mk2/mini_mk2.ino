@@ -1,8 +1,5 @@
-#include "stm32f103xb.h"
-#include "timer.h"
-#include "stm32f1xx.h"
-#include "HardwareTimer.h"
 #include "mini_mk2_interface.h"
+#include "logo.h"
 
 // CONFIGURATION FOR USER - YOU CAN CHANGE THESE VALUES TO WHATEVER YOU WANT ====
 
@@ -38,14 +35,25 @@ void setup() {
 
   switch(splash_screen_mode) {
     case 0:
-      Launchpad::writeBitmap(LOGO_BITMAP);
+      Launchpad::DrawBitmap(LOGO_BITMAP);
       delay(logo_timeout);
       break;
     case 1:
-      Launchpad::scrollString(startup_text, std::size(startup_text), startup_text_frame_time, 1);
+      Launchpad::ScrollString(startup_text, std::size(startup_text), startup_text_frame_time, 1);
       break;
     case 2:
-      Launchpad::ShockWaveAtPosition(15, 0, 1, 1, 30, 10, 5, 0.8, 0.90);
+      Launchpad::ShockwaveParameters params;
+      params.origin_x = 15;
+      params.origin_y = 0;
+      params.red_enabled = true;
+      params.green_enabled = true;
+      params.max_radius = 30;
+      params.initial_radius = 10;
+      params.frame_time = 5;
+      params.thickness = 0.8;
+      params.damping = 0.9;
+      
+      Launchpad::ShockwaveAtPosition(params);
       break;
   }
 }
@@ -54,10 +62,10 @@ void loop() {}
 
 void Launchpad::onButtonDown(int posx, int posy) {
   led_states[posx][posy][0] = 3;
-  led_states[posx][posy][1] = 3;
+  led_states[posx][posy][1] = 0;
 
   if (button_states[0][0] == 1 && button_states[7][0] == 1) {
-    scrollString(startup_text, std::size(startup_text), startup_text_frame_time, 1);
+    ScrollString(startup_text, std::size(startup_text), startup_text_frame_time, 1);
   }
 }
 
@@ -66,5 +74,5 @@ void Launchpad::onButtonUp(int posx, int posy) {
   led_states[posx][posy][1] = 0;
 }
 
-void onAnythingHappened() {
+void Launchpad::onAnythingHappened() {
 }

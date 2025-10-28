@@ -1,9 +1,28 @@
-#include "logo.h"
+#include <Arduino.h>
+#include "stm32f103xb.h"
+#include "timer.h"
+#include "stm32f1xx.h"
+#include "HardwareTimer.h"
+
+#ifndef STANDARD_FONT_H
+#define STANDARD_FONT_H
 #include "standard_font.h"
+#endif
+
 #include "mini_mk2_interface.h"
 
-int Launchpad::led_states[9][9][2] = {{0,0}};
-bool Launchpad::button_states[9][9] = {{0}};
+#define DS_LED PB15
+#define CP_LED PB13
+#define NPL_SW PA4
+#define CP_SW PA5
+#define Q_SW PA6
+#define MUX1 PB0
+#define MUX2 PB1
+#define MUX3 PB2
+
+int Launchpad::led_states[9][9][2] = {{0,0}}; //3D array that can be written to directly indicating the intensity of the Red an Green LEDs per pixel. Max intensity is 3.
+bool Launchpad::button_states[9][9] = {{0}};; //2D array which is read-only 
+
 bool previous_button_states[9][9] = {{0}};
 
 //int led_index_map[9][9] = {{0, 13, 14, 15, 16, 17, 18, 19, 20}, {0, 13, 14, 15, 16, 17, 18, 19, 20}, {0, 13, 14, 15, 16, 17, 18, 19, 20}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {1, 9, 10, 11, 12, 21, 22, 23, 24}, {2, 4, 5, 6, 8, 25, 26, 27, 28}, {2, 4, 5, 6, 8, 25, 26, 27, 28}, {2, 4, 5, 6, 8, 25, 26, 27, 28}};
@@ -23,217 +42,63 @@ int fragment[27][2] = {{0,0}};
 int mux_idx = 1;
 int frame = 0; //4 max, when this reaches 4 it gets reset to 0
 
-#define DS_LED PB15
-#define CP_LED PB13
-#define NPL_SW PA4
-#define CP_SW PA5
-#define Q_SW PA6
-#define MUX1 PB0
-#define MUX2 PB1
-#define MUX3 PB2
-
 HardwareTimer *DisplayTimer = new HardwareTimer(TIM3);  // DisplayTimer provides a stable refresh rate for the LED matrix and reading out buttons.
 
-void Launchpad::Begin() {
-  DisplayTimer->setMode(1, TIMER_OUTPUT_DISABLED);
-  DisplayTimer->setOverflow(750, HERTZ_FORMAT); //750
-  DisplayTimer->attachInterrupt(display_update_callback);
-  DisplayTimer->resume();
-
-  pinMode(DS_LED, OUTPUT);
-  pinMode(CP_LED, OUTPUT);
-  pinMode(NPL_SW, OUTPUT);
-  pinMode(CP_SW, OUTPUT);
-  pinMode(Q_SW, INPUT);
-  pinMode(MUX1, OUTPUT);
-  pinMode(MUX2, OUTPUT);
-  pinMode(MUX3, OUTPUT);
-  
-  Launchpad::FlushDisplay();
-}
-
-void Launchpad::FlushDisplay() {
-  display_update_callback();
-  display_update_callback();
-  display_update_callback();
-}
-
-void display_update_callback() {
-  if (mux_idx == 2) {
-    frame++;
-  }
-
-  mux_idx++;
-  mux_idx = mux_idx % 3;
-  frame = frame % 4;
-
-  triggerMux(0);
-  displayFragment(mux_idx, frame);
-  triggerMux(mux_idx + 1);
-
-  readButtons(mux_idx);
-
-  for (int x = 0; x < 9; x++) {
-    for (int y = 0; y < 9; y++) {
-      if (button_states[x][y] == true && previous_button_states[x][y] == false) {
-        button_down_callback(x,y);
-      }
-      else if (button_states[x][y] == false && previous_button_states[x][y] == true) {
-        button_up_callback(x,y);
-      }
-    }
-  }
-
-  memcpy(previous_button_states, button_states, sizeof(bool) * 81);
-}
-
-void displayFragment(int mux_idx, int frame) {
-  
-  for (int x = 0; x < 3; x++) { //generate array of led color intensities based on mux index: {{64,0}, {32,0}, {50,0}, {0,64}, {RED, GREEN}, etc..} where 64 is max brightness and 0 is disabled
-    for (int y = 0; y < 9; y++) {
-      memcpy(fragment[led_index_map[(x * 3) + mux_idx][y]], led_states[(x * 3) + mux_idx][y], 2 * sizeof(int));
-    }
-  }
-
-  int serial_data_out[56] = {0};
-
-  for (int idx = 0; idx < 27; idx++) {
-    if (fragment[idx][0] > frame) {
-      serial_data_out[led_register_map_red[idx]] = 1;
-      //serial_data_out[led_register_map_green[idx]] = 1;
-    }
-    if (fragment[idx][1] > frame) {
-      serial_data_out[led_register_map_green[idx]] = 1;
-    }
-
-  }
-  writeSerialReverse(serial_data_out, 56);
-
-}
-
-void readButtons(int mux_idx) {
-  setState_NPL_SW(LOW); //load parallel data into registers
-  setState_NPL_SW(HIGH);  //enable serial shift mode
-
-  for (int temp = 0; temp < 32; temp++) {
-    button_states[button_index_map[mux_idx][temp][0]][button_index_map[mux_idx][temp][1]] = readState_Q_SW();
-    HC165_clockCycle();
-  }
-}
-
-struct ShockwaveParameters {
-  unsigned int origin_x; 
-  unsigned int origin_y;
-  bool red_enabled; 
-  bool green_enabled; 
-  int max_radius;
-  int initial_radius;
-  int frame_time;
-  float thickness;
-  float damping;
-}
-
-void Launchpad::ShockWaveAtPosition(const ShockwaveParameters& parameters) {
-  float _progress = 0.0;
-  int _current_radius = parameters.initial_radius;
-  int _frame_delay = parameters.frame_time;
-
-  while (_current_radius < parameters.max_radius) {
-
-    for (int x = 0; x < 9; x++) {
-      for (int y = 0; y < 9; y++) {
-        double _distance_to_origin = sqrt(sq(parameters.origin_x - x) + sq(parameters.origin_y - y));
-
-        if ((_distance_to_origin >= _current_radius && _distance_to_origin <= _current_radius + parameters.thickness) || (_distance_to_origin <= _current_radius && _distance_to_origin >= _current_radius - parameters.thickness)) {
-          int _color_at_point[2] = {floor(float(parameters.red_enabled) * 4.0 * (1.0 - _progress)), floor(float(parameters.green_enabled) * 4.0 * (1.0 - _progress))};
-          
-          memcpy(led_states[x][y], _color_at_point, 2 * sizeof(int));
-        }
-        else {
-          led_states[x][y][0] = 0;
-          led_states[x][y][1] = 0;
-        }
-      }
-    }
-
-    _current_radius++;
-    delay(_frame_delay);
-    _frame_delay /= parameters.damping;
-    _progress = float(_current_radius) / float(parameters.max_radius);
-  }
-}
-
-void Launchpad::DrawBitmap(int bitmap_data[9][9][2]) {
-  for (int y = 0; y < 9; y++) {
-    for (int x = 0; x < 9; x++) {
-      memcpy(led_states[x][y], bitmap_data[y][x], 2 * sizeof(int));
-    }
-  }
-
-  display_update_callback();
-  display_update_callback();
-  display_update_callback();
-}
-
-void Launchpad::ScrollString(char input_string[], int string_size, int frame_time, int height) {
-  OL_CHAR _result_string[string_size - 1] = {OL_CHAR_QUESTION_MARK};
-
-  for (int char_idx = 0; char_idx < string_size - 1; char_idx++) {
-    _result_string[char_idx] = getOLCharIndex(input_string[char_idx]);
-  }
-
-  scrollChars(_result_string, string_size - 1, frame_time, height);
-}
-
-OL_CHAR GetOLCharIndex(char character) {
-  OL_CHAR _result = static_cast<OL_CHAR>(75); //unknown character
-  for (int idx = 0; idx < std::size(OL_CHARACTERS); idx++) {
-    if (CHAR_MAP[idx] == character) {
-      _result = static_cast<OL_CHAR>(idx);
+void triggerMux(int index) { //-1 enables all, 0 disables all
+  switch (index) {
+    case -1:
+      digitalWrite(MUX2, LOW);
+      digitalWrite(MUX3, LOW);
+      digitalWrite(MUX1, LOW);
       break;
-    }
-  }
-
-  return _result;
-}
-
-void Launchpad::ScrollChars(OL_CHAR input_chars[], int char_string_length, int frame_time, int height) { //string is array of 
-  int _origin_x = 9;
-  int _character_offsets[char_string_length] = {0};
-  int _total_string_length = 0;
-
-  for (int idx = 1; idx < char_string_length; idx++) {
-    _character_offsets[idx] = OL_CHARACTERS[input_chars[idx - 1]].width + 1 + _character_offsets[idx - 1];
-    _total_string_length += OL_CHARACTERS[input_chars[idx - 1]].width + 1;
-  }
-
-  while (_origin_x > _total_string_length * -1 - 6) {
-
-    clearScreen();
-    for (int char_idx = 0; char_idx < char_string_length; char_idx++) {
-      writeCharacter(input_chars[char_idx], _character_offsets[char_idx] + _origin_x, height + OL_CHARACTERS[input_chars[char_idx]].y_offset, 4, 1);
-    }
-    
-    delay(frame_time);
-    _origin_x -= 1;
+    case 0:
+      digitalWrite(MUX1, HIGH);
+      digitalWrite(MUX2, HIGH);
+      digitalWrite(MUX3, HIGH);
+    break;
+    case 1:
+      digitalWrite(MUX1, LOW);
+      digitalWrite(MUX2, HIGH);
+      digitalWrite(MUX3, HIGH);
+      break;
+    case 2:
+      digitalWrite(MUX2, LOW);
+      digitalWrite(MUX1, HIGH);
+      digitalWrite(MUX3, HIGH);
+      break;
+    case 3:
+      digitalWrite(MUX3, LOW);
+      digitalWrite(MUX2, HIGH);
+      digitalWrite(MUX1, HIGH);
+      break;
   }
 }
 
-void Launchpad::DrawCharacter(int character_index, int posx, int posy, int red, int green) {
-  int _char_width = OL_CHARACTERS[character_index].width;
+void clearScreen() {
+  int _new_led_states[9][9][2] = {{0,0}};
+  memcpy(Launchpad::led_states, _new_led_states, sizeof(int) * 81 * 2);
+}
 
-  if (posx > -5 && posx < 9 && posy > -7 && posy < 9){
-    for (int x = 0; x < _char_width; x++) {
-      for (int y = 0; y < 6; y++) {
-        if (x + posx > 8 || y + posy > 8) {
-          break;
-        }
+bool readState_Q_SW() {
+  return digitalRead(Q_SW);
+}
 
-        led_states[x + posx][y + posy][0] = red * OL_CHARACTERS[character_index].bitmap[y][x];
-        led_states[x + posx][y + posy][1] = green * OL_CHARACTERS[character_index].bitmap[y][x];
-      }
-    }
-  }
+void setState_NPL_SW(bool state) {
+  digitalWrite(NPL_SW, state);
+}
+
+void setState_DS_LED(bool inv_state) {
+  digitalWrite(DS_LED, !inv_state);
+}
+
+void HC164_clockCycle() {
+  digitalWrite(CP_LED, HIGH);
+  digitalWrite(CP_LED, LOW);
+}
+
+void HC165_clockCycle() {
+  digitalWrite(CP_SW, HIGH);
+  digitalWrite(CP_SW, LOW);
 }
 
 void writeRed() {
@@ -271,6 +136,16 @@ void writeOrange() {
   }  
 }
 
+void readButtons(int mux_idx) {
+  setState_NPL_SW(LOW); //load parallel data into registers
+  setState_NPL_SW(HIGH);  //enable serial shift mode
+
+  for (int temp = 0; temp < 32; temp++) {
+    Launchpad::button_states[button_index_map[mux_idx][temp][0]][button_index_map[mux_idx][temp][1]] = readState_Q_SW();
+    HC165_clockCycle();
+  }
+}
+
 void writeSerialReverse(int serial_string_in[], int data_string_size) {
   for (int idx = data_string_size - 1; idx >= 0; idx -= 1) {
     setState_DS_LED(serial_string_in[idx]);
@@ -279,59 +154,183 @@ void writeSerialReverse(int serial_string_in[], int data_string_size) {
 }
 
 
-void triggerMux(int index) { //-1 enables all, 0 disables all
-  switch (index) {
-    case -1:
-      digitalWrite(MUX2, LOW);
-      digitalWrite(MUX3, LOW);
-      digitalWrite(MUX1, LOW);
-      break;
-    case 0:
-      digitalWrite(MUX1, HIGH);
-      digitalWrite(MUX2, HIGH);
-      digitalWrite(MUX3, HIGH);
-    break;
-    case 1:
-      digitalWrite(MUX1, LOW);
-      digitalWrite(MUX2, HIGH);
-      digitalWrite(MUX3, HIGH);
-      break;
-    case 2:
-      digitalWrite(MUX2, LOW);
-      digitalWrite(MUX1, HIGH);
-      digitalWrite(MUX3, HIGH);
-      break;
-    case 3:
-      digitalWrite(MUX3, LOW);
-      digitalWrite(MUX2, HIGH);
-      digitalWrite(MUX1, HIGH);
-      break;
+void displayFragment(int mux_idx, int frame) {
+  
+  for (int x = 0; x < 3; x++) { //generate array of led color intensities based on mux index: {{64,0}, {32,0}, {50,0}, {0,64}, {RED, GREEN}, etc..} where 64 is max brightness and 0 is disabled
+    for (int y = 0; y < 9; y++) {
+      memcpy(fragment[led_index_map[(x * 3) + mux_idx][y]], Launchpad::led_states[(x * 3) + mux_idx][y], 2 * sizeof(int));
+    }
+  }
+
+  int serial_data_out[56] = {0};
+
+  for (int idx = 0; idx < 27; idx++) {
+    if (fragment[idx][0] > frame) {
+      serial_data_out[led_register_map_red[idx]] = 1;
+      //serial_data_out[led_register_map_green[idx]] = 1;
+    }
+    if (fragment[idx][1] > frame) {
+      serial_data_out[led_register_map_green[idx]] = 1;
+    }
+
+  }
+  writeSerialReverse(serial_data_out, 56);
+
+}
+
+
+void display_update_callback() {
+  if (mux_idx == 2) {
+    frame++;
+  }
+
+  mux_idx++;
+  mux_idx = mux_idx % 3;
+  frame = frame % 4;
+
+  triggerMux(0);
+  displayFragment(mux_idx, frame);
+  triggerMux(mux_idx + 1);
+
+  readButtons(mux_idx);
+
+  for (int x = 0; x < 9; x++) {
+    for (int y = 0; y < 9; y++) {
+      if (Launchpad::button_states[x][y] == true && previous_button_states[x][y] == false) {
+        Launchpad::onButtonDown(x,y);
+      }
+      else if (Launchpad::button_states[x][y] == false && previous_button_states[x][y] == true) {
+        Launchpad::onButtonUp(x,y);
+      }
+    }
+  }
+
+  memcpy(previous_button_states, Launchpad::button_states, sizeof(bool) * 81);
+}
+
+void Launchpad::FlushDisplay() {
+  display_update_callback();
+  display_update_callback();
+  display_update_callback();
+}
+
+void Launchpad::ShockwaveAtPosition(const Launchpad::ShockwaveParameters parameters) {
+  float _progress = 0.0;
+  int _current_radius = parameters.initial_radius;
+  int _frame_delay = parameters.frame_time;
+
+  while (_current_radius < parameters.max_radius) {
+
+    for (int x = 0; x < 9; x++) {
+      for (int y = 0; y < 9; y++) {
+        double _distance_to_origin = sqrt(sq(parameters.origin_x - x) + sq(parameters.origin_y - y));
+
+        if ((_distance_to_origin >= _current_radius && _distance_to_origin <= _current_radius + parameters.thickness) || (_distance_to_origin <= _current_radius && _distance_to_origin >= _current_radius - parameters.thickness)) {
+          int _color_at_point[2] = {floor(float(parameters.red_enabled) * 4.0 * (1.0 - _progress)), floor(float(parameters.green_enabled) * 4.0 * (1.0 - _progress))};
+          
+          memcpy(Launchpad::led_states[x][y], _color_at_point, 2 * sizeof(int));
+        }
+        else {
+          Launchpad::led_states[x][y][0] = 0;
+          Launchpad::led_states[x][y][1] = 0;
+        }
+      }
+    }
+
+    _current_radius++;
+    delay(_frame_delay);
+    _frame_delay /= parameters.damping;
+    _progress = float(_current_radius) / float(parameters.max_radius);
   }
 }
 
-void clearScreen() {
-  int _new_led_states[9][9][2] = {{0,0}};
-  memcpy(led_states, _new_led_states, sizeof(int) * 81 * 2);
+void Launchpad::DrawBitmap(int bitmap_data[9][9][2]) {
+  for (int y = 0; y < 9; y++) {
+    for (int x = 0; x < 9; x++) {
+      memcpy(Launchpad::led_states[x][y], bitmap_data[y][x], 2 * sizeof(int));
+    }
+  }
+
+  display_update_callback();
+  display_update_callback();
+  display_update_callback();
 }
 
-bool readState_Q_SW() {
-  return digitalRead(Q_SW);
+OL_CHAR GetOLCharIndex(char character) {
+  OL_CHAR _result = static_cast<OL_CHAR>(75); //unknown character
+  for (int idx = 0; idx < std::size(OL_CHARACTERS); idx++) {
+    if (CHAR_MAP[idx] == character) {
+      _result = static_cast<OL_CHAR>(idx);
+      break;
+    }
+  }
+
+  return _result;
 }
 
-void setState_NPL_SW(bool state) {
-  digitalWrite(NPL_SW, state);
+void Launchpad::ScrollChars(OL_CHAR input_chars[], int char_string_length, int frame_time, int height) { //string is array of 
+  int _origin_x = 9;
+  int _character_offsets[char_string_length] = {0};
+  int _total_string_length = 0;
+
+  for (int idx = 1; idx < char_string_length; idx++) {
+    _character_offsets[idx] = OL_CHARACTERS[input_chars[idx - 1]].width + 1 + _character_offsets[idx - 1];
+    _total_string_length += OL_CHARACTERS[input_chars[idx - 1]].width + 1;
+  }
+
+  while (_origin_x > _total_string_length * -1 - 6) {
+
+    clearScreen();
+    for (int char_idx = 0; char_idx < char_string_length; char_idx++) {
+      DrawCharacter(input_chars[char_idx], _character_offsets[char_idx] + _origin_x, height + OL_CHARACTERS[input_chars[char_idx]].y_offset, 4, 1);
+    }
+    
+    delay(frame_time);
+    _origin_x -= 1;
+  }
 }
 
-void setState_DS_LED(bool inv_state) {
-  digitalWrite(DS_LED, !inv_state);
+void Launchpad::ScrollString(char input_string[], int string_size, int frame_time, int height) {
+  OL_CHAR _result_string[string_size - 1] = {OL_CHAR_QUESTION_MARK};
+
+  for (int char_idx = 0; char_idx < string_size - 1; char_idx++) {
+    _result_string[char_idx] = GetOLCharIndex(input_string[char_idx]);
+  }
+
+  Launchpad::ScrollChars(_result_string, string_size - 1, frame_time, height);
 }
 
-void HC164_clockCycle() {
-  digitalWrite(CP_LED, HIGH);
-  digitalWrite(CP_LED, LOW);
+void Launchpad::DrawCharacter(int character_index, int posx, int posy, int red, int green) {
+  int _char_width = OL_CHARACTERS[character_index].width;
+
+  if (posx > -5 && posx < 9 && posy > -7 && posy < 9){
+    for (int x = 0; x < _char_width; x++) {
+      for (int y = 0; y < 6; y++) {
+        if (x + posx > 8 || y + posy > 8) {
+          break;
+        }
+
+        Launchpad::led_states[x + posx][y + posy][0] = red * OL_CHARACTERS[character_index].bitmap[y][x];
+        Launchpad::led_states[x + posx][y + posy][1] = green * OL_CHARACTERS[character_index].bitmap[y][x];
+      }
+    }
+  }
 }
 
-void HC165_clockCycle() {
-  digitalWrite(CP_SW, HIGH);
-  digitalWrite(CP_SW, LOW);
+void Launchpad::Begin() {
+  DisplayTimer->setMode(1, TIMER_OUTPUT_DISABLED);
+  DisplayTimer->setOverflow(750, HERTZ_FORMAT); //750
+  DisplayTimer->attachInterrupt(display_update_callback);
+  DisplayTimer->resume();
+
+  pinMode(DS_LED, OUTPUT);
+  pinMode(CP_LED, OUTPUT);
+  pinMode(NPL_SW, OUTPUT);
+  pinMode(CP_SW, OUTPUT);
+  pinMode(Q_SW, INPUT);
+  pinMode(MUX1, OUTPUT);
+  pinMode(MUX2, OUTPUT);
+  pinMode(MUX3, OUTPUT);
+  
+  Launchpad::FlushDisplay();
 }
