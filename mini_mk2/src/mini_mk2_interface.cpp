@@ -3,12 +3,6 @@
 #include "timer.h"
 #include "stm32f1xx.h"
 #include "HardwareTimer.h"
-
-#ifndef STANDARD_FONT_H
-#define STANDARD_FONT_H
-#include "standard_font.h"
-#endif
-
 #include "mini_mk2_interface.h"
 
 #define DS_LED PB15
@@ -72,11 +66,6 @@ void triggerMux(int index) { //-1 enables all, 0 disables all
       digitalWrite(MUX1, HIGH);
       break;
   }
-}
-
-void clearScreen() {
-  int _new_led_states[9][9][2] = {{0,0}};
-  memcpy(Launchpad::led_states, _new_led_states, sizeof(int) * 81 * 2);
 }
 
 bool readState_Q_SW() {
@@ -203,118 +192,26 @@ void display_update_callback() {
         Launchpad::onButtonUp(x,y);
       }
     }
-  }
+   }
 
   memcpy(previous_button_states, Launchpad::button_states, sizeof(bool) * 81);
+}
+
+void Launchpad::ClearDisplayBuffer() {
+  int _new_led_states[9][9][2] = {{0,0}};
+  memcpy(Launchpad::led_states, _new_led_states, sizeof(int) * 81 * 2);
+}
+
+void Launchpad::ClearDisplay() {
+  int _new_led_states[9][9][2] = {{0,0}};
+  memcpy(Launchpad::led_states, _new_led_states, sizeof(int) * 81 * 2);
+  Launchpad::FlushDisplay();
 }
 
 void Launchpad::FlushDisplay() {
   display_update_callback();
   display_update_callback();
   display_update_callback();
-}
-
-void Launchpad::ShockwaveAtPosition(const Launchpad::ShockwaveParameters parameters) {
-  float _progress = 0.0;
-  int _current_radius = parameters.initial_radius;
-  int _frame_delay = parameters.frame_time;
-
-  while (_current_radius < parameters.max_radius) {
-
-    for (int x = 0; x < 9; x++) {
-      for (int y = 0; y < 9; y++) {
-        double _distance_to_origin = sqrt(sq(parameters.origin_x - x) + sq(parameters.origin_y - y));
-
-        if ((_distance_to_origin >= _current_radius && _distance_to_origin <= _current_radius + parameters.thickness) || (_distance_to_origin <= _current_radius && _distance_to_origin >= _current_radius - parameters.thickness)) {
-          int _color_at_point[2] = {floor(float(parameters.red_enabled) * 4.0 * (1.0 - _progress)), floor(float(parameters.green_enabled) * 4.0 * (1.0 - _progress))};
-          
-          memcpy(Launchpad::led_states[x][y], _color_at_point, 2 * sizeof(int));
-        }
-        else {
-          Launchpad::led_states[x][y][0] = 0;
-          Launchpad::led_states[x][y][1] = 0;
-        }
-      }
-    }
-
-    _current_radius++;
-    delay(_frame_delay);
-    _frame_delay /= parameters.damping;
-    _progress = float(_current_radius) / float(parameters.max_radius);
-  }
-}
-
-void Launchpad::DrawBitmap(int bitmap_data[9][9][2]) {
-  for (int y = 0; y < 9; y++) {
-    for (int x = 0; x < 9; x++) {
-      memcpy(Launchpad::led_states[x][y], bitmap_data[y][x], 2 * sizeof(int));
-    }
-  }
-
-  display_update_callback();
-  display_update_callback();
-  display_update_callback();
-}
-
-OL_CHAR GetOLCharIndex(char character) {
-  OL_CHAR _result = static_cast<OL_CHAR>(75); //unknown character
-  for (int idx = 0; idx < std::size(OL_CHARACTERS); idx++) {
-    if (CHAR_MAP[idx] == character) {
-      _result = static_cast<OL_CHAR>(idx);
-      break;
-    }
-  }
-
-  return _result;
-}
-
-void Launchpad::ScrollChars(OL_CHAR input_chars[], int char_string_length, int frame_time, int height) { //string is array of 
-  int _origin_x = 9;
-  int _character_offsets[char_string_length] = {0};
-  int _total_string_length = 0;
-
-  for (int idx = 1; idx < char_string_length; idx++) {
-    _character_offsets[idx] = OL_CHARACTERS[input_chars[idx - 1]].width + 1 + _character_offsets[idx - 1];
-    _total_string_length += OL_CHARACTERS[input_chars[idx - 1]].width + 1;
-  }
-
-  while (_origin_x > _total_string_length * -1 - 6) {
-
-    clearScreen();
-    for (int char_idx = 0; char_idx < char_string_length; char_idx++) {
-      DrawCharacter(input_chars[char_idx], _character_offsets[char_idx] + _origin_x, height + OL_CHARACTERS[input_chars[char_idx]].y_offset, 4, 1);
-    }
-    
-    delay(frame_time);
-    _origin_x -= 1;
-  }
-}
-
-void Launchpad::ScrollString(char input_string[], int string_size, int frame_time, int height) {
-  OL_CHAR _result_string[string_size - 1] = {OL_CHAR_QUESTION_MARK};
-
-  for (int char_idx = 0; char_idx < string_size - 1; char_idx++) {
-    _result_string[char_idx] = GetOLCharIndex(input_string[char_idx]);
-  }
-
-  Launchpad::ScrollChars(_result_string, string_size - 1, frame_time, height);
-}
-
-void Launchpad::DrawCharacter(int character_index, int posx, int posy, int red, int green) {
-  int _char_width = OL_CHARACTERS[character_index].width;
-
-  if (posx > -5 && posx < 9 && posy > -7 && posy < 9){
-    for (int x = 0; x < _char_width; x++) {
-      for (int y = 0; y < 6; y++) {
-        if (x + posx > 8 || y + posy > 8) {
-          break;
-        }
-
-        Launchpad::led_states[x + posx][y + posy][0] = red * OL_CHARACTERS[character_index].bitmap[y][x];
-        Launchpad::led_states[x + posx][y + posy][1] = green * OL_CHARACTERS[character_index].bitmap[y][x];
-      }
-    }
-  }
 }
 
 void Launchpad::Begin() {
@@ -332,5 +229,6 @@ void Launchpad::Begin() {
   pinMode(MUX2, OUTPUT);
   pinMode(MUX3, OUTPUT);
   
+  Launchpad::ClearDisplay();
   Launchpad::FlushDisplay();
 }
