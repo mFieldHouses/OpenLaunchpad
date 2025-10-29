@@ -15,6 +15,7 @@
 #define MUX3 PB2
 
 int Launchpad::pixel_colors[9][9][2] = {{0,0}}; //3D array that can be written to directly indicating the intensity of the Red and Green LEDs per pixel. Max intensity is 7.
+float Launchpad::pixel_intensity_mask[9][9] = {0.0};
 Launchpad::PixelState Launchpad::pixel_states[9][9] = {{Launchpad::SOLID}};
 bool Launchpad::button_states[9][9] = {{0}};; //2D array which is read-only 
 
@@ -146,19 +147,26 @@ void writeSerialReverse(int serial_string_in[], int data_string_size) {
 }
 
 float getPixelIntensity(int posx, int posy) {
+  float result = 1.0;
+
   switch (Launchpad::pixel_states[posx][posy]) {
     case Launchpad::SOLID:
-      return 1.0;
+      result = 1.0;
       break;
     case Launchpad::FLASH_1:
-      return (sin(sin_time) * 0.5) + 0.5;
+      result = (sin(sin_time) * 0.45) + 0.55;
       break;
     case Launchpad::FLASH_2:
-      return (sin(sin_time * 2.0) * 0.5) + 0.5;
+      result = (sin(sin_time * 2.0) * 0.45) + 0.55;
+      break;
+    case Launchpad::FLASH_4:
+      result = (sin(sin_time * 4.0) * 0.45) + 0.55;
       break;
     default:
-      return 1.0;
+      result = 1.0;
   }
+
+  return result * Launchpad::pixel_intensity_mask[posx][posy];
 }
 
 void displayFragment(int mux_idx, int frame) {
@@ -241,6 +249,12 @@ void Launchpad::FlushDisplay() {
 }
 
 void Launchpad::Begin() {
+  for (int x = 0; x < 9; x++) {
+    for (int y = 0; y < 9; y++) {
+      pixel_intensity_mask[x][y] = 1.0;
+    }
+  }
+
   DisplayTimer->setMode(1, TIMER_OUTPUT_DISABLED);
   DisplayTimer->setOverflow(1200, HERTZ_FORMAT); //1200
   DisplayTimer->attachInterrupt(display_update_callback);

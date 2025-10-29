@@ -14,7 +14,9 @@
 #define MUX2 PB1
 #define MUX3 PB2
 
-int Launchpad::led_states[9][9][2] = {{0,0}}; //3D array that can be written to directly indicating the intensity of the Red an Green LEDs per pixel. Max intensity is 3.
+int Launchpad::pixel_colors[9][9][2] = {{0,0}}; //3D array that can be written to directly indicating the intensity of the Red and Green LEDs per pixel. Max intensity is 7.
+float Launchpad::pixel_intensity_mask[9][9] = {0.0};
+Launchpad::PixelState Launchpad::pixel_states[9][9] = {{Launchpad::SOLID}};
 bool Launchpad::button_states[9][9] = {{0}};; //2D array which is read-only 
 
 bool previous_button_states[9][9] = {{0}};
@@ -35,6 +37,8 @@ int fragment[27][2] = {{0,0}};
 
 int mux_idx = 1;
 int frame = 0; //4 max, when this reaches 4 it gets reset to 0
+
+float sin_time = 0.0;
 
 HardwareTimer *DisplayTimer = new HardwareTimer(TIM3);  // DisplayTimer provides a stable refresh rate for the LED matrix and reading out buttons.
 
@@ -142,12 +146,40 @@ void writeSerialReverse(int serial_string_in[], int data_string_size) {
   }
 }
 
+float getPixelIntensity(int posx, int posy) {
+  float result = 1.0;
+
+  switch (Launchpad::pixel_states[posx][posy]) {
+    case Launchpad::SOLID:
+      result = 1.0;
+      break;
+    case Launchpad::FLASH_1:
+      result = (sin(sin_time) * 0.45) + 0.55;
+      break;
+    case Launchpad::FLASH_2:
+      result = (sin(sin_time * 2.0) * 0.45) + 0.55;
+      break;
+    case Launchpad::FLASH_4:
+      result = (sin(sin_time * 4.0) * 0.45) + 0.55;
+      break;
+    default:
+      result = 1.0;
+  }
+
+  return result * Launchpad::pixel_intensity_mask[posx][posy];
+}
 
 void displayFragment(int mux_idx, int frame) {
   
   for (int x = 0; x < 3; x++) { //generate array of led color intensities based on mux index: {{64,0}, {32,0}, {50,0}, {0,64}, {RED, GREEN}, etc..} where 64 is max brightness and 0 is disabled
     for (int y = 0; y < 9; y++) {
-      memcpy(fragment[led_index_map[(x * 3) + mux_idx][y]], Launchpad::led_states[(x * 3) + mux_idx][y], 2 * sizeof(int));
+      int resulting_color[2];
+      memcpy(resulting_color, Launchpad::pixel_colors[(x * 3) + mux_idx][y], 2 * sizeof(int));
+      
+      resulting_color[0] = float(resulting_color[0]) * getPixelIntensity((x * 3) + mux_idx, y);
+      resulting_color[1] = float(resulting_color[1]) * getPixelIntensity((x * 3) + mux_idx, y);
+      
+      memcpy(fragment[led_index_map[(x * 3) + mux_idx][y]], resulting_color, 2 * sizeof(int));
     }
   }
 
@@ -169,13 +201,15 @@ void displayFragment(int mux_idx, int frame) {
 
 
 void display_update_callback() {
+  sin_time += 4.0 / 1200.0; //speed up all flashes and such by 4 times by default
+
   if (mux_idx == 2) {
     frame++;
   }
 
   mux_idx++;
   mux_idx = mux_idx % 3;
-  frame = frame % 4;
+  frame = frame % 9;
 
   triggerMux(0);
   displayFragment(mux_idx, frame);
@@ -198,13 +232,13 @@ void display_update_callback() {
 }
 
 void Launchpad::ClearDisplayBuffer() {
-  int _new_led_states[9][9][2] = {{0,0}};
-  memcpy(Launchpad::led_states, _new_led_states, sizeof(int) * 81 * 2);
+  int _new_pixel_colors[9][9][2] = {{0,0}};
+  memcpy(Launchpad::pixel_colors, _new_pixel_colors, sizeof(int) * 81 * 2);
 }
 
 void Launchpad::ClearDisplay() {
-  int _new_led_states[9][9][2] = {{0,0}};
-  memcpy(Launchpad::led_states, _new_led_states, sizeof(int) * 81 * 2);
+  int _new_pixel_colors[9][9][2] = {{0,0}};
+  memcpy(Launchpad::pixel_colors, _new_pixel_colors, sizeof(int) * 81 * 2);
   Launchpad::FlushDisplay();
 }
 
@@ -215,8 +249,14 @@ void Launchpad::FlushDisplay() {
 }
 
 void Launchpad::Begin() {
+  for (int x = 0; x < 9; x++) {
+    for (int y = 0; y < 9; y++) {
+      pixel_intensity_mask[x][y] = 1.0;
+    }
+  }
+
   DisplayTimer->setMode(1, TIMER_OUTPUT_DISABLED);
-  DisplayTimer->setOverflow(750, HERTZ_FORMAT); //750
+  DisplayTimer->setOverflow(1200, HERTZ_FORMAT); //1200
   DisplayTimer->attachInterrupt(display_update_callback);
   DisplayTimer->resume();
 
